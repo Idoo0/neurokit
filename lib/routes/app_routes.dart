@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
-import 'package:my_app/view/homepage.dart';
-// import '../view/homepage_page.dart';
+import '../view/homepage.dart';
 import '../view/stats_page.dart';
 import '../view/study_session_page.dart';
 // import '../view/warm_up_page.dart';
