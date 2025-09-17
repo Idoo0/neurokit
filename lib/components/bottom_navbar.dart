@@ -1,4 +1,5 @@
 // lib/components/bottom_navbar.dart
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../utils.dart';
 
@@ -25,60 +26,67 @@ class BottomNavApp extends StatelessWidget {
   /// Padding vertikal konten tombol tengah (di dalam circle)
   final double centerItemVerticalPadding;
 
-  /// Jarak tombol tengah “menggantung” dari atas pill
+  /// Jarak tombol tengah “menggantung” dari atas pill (dasar)
   final double centerLift;
 
   /// Jarak pill dari tepi bawah layar
   final double pillBottomMargin;
 
+  /// Fine-tune khusus lingkaran (positif = TURUN, negatif = NAIK)
+  final double centerOffset;
+
   const BottomNavApp({
     super.key,
     required this.selectedIndex,
     required this.onItemTapped,
-    // default PNG (ganti sesuai asetmu)
     this.badges = 'assets/images/badges.png',
     this.badgesActive,
     this.home = 'assets/images/home.png',
     this.homeActive,
     this.stats = 'assets/images/stats.png',
     this.statsActive,
-    this.iconSize = 44, // bebas dinaikkan; anti-overflow
-    this.sideItemVerticalPadding = 10, // kiri/kanan
-    this.centerItemVerticalPadding = 14, // tengah (circle)
-    this.centerLift = 14, // makin besar, makin “menggantung”
-    this.pillBottomMargin = 22, // jarak pill dari tepi bawah
+    this.iconSize = 44,
+    this.sideItemVerticalPadding = 10,
+    this.centerItemVerticalPadding = 14,
+    this.centerLift = 2,
+    this.pillBottomMargin = 22,
+    this.centerOffset = 0, // << baru
   });
 
   @override
   Widget build(BuildContext context) {
-    // hitung tinggi teks real (ikut textScaleFactor)
+    // Ukur tinggi teks aktual (hormat ke textScaleFactor)
     final double textH = _measureOneLineHeight(context, bodyText12, 'home');
 
     const double gapIconText = 6;
-    const double shadowPad = 24; // ruang ekstra buat shadow
+    const double shadowPad = 24;
 
-    // tinggi pill menyesuaikan icon + teks + padding
+    // ---- Tinggi pill: konten + padding + buffer ----
+    final double innerNeeded = iconSize + gapIconText + textH;
     double pillHeight =
-        iconSize + gapIconText + textH + (sideItemVerticalPadding * 2);
-    pillHeight = _ceilToEven(pillHeight);
-    pillHeight = _clampDouble(pillHeight, 64, 96);
+        innerNeeded + (sideItemVerticalPadding * 2) + 4; // +buffer
+    pillHeight = _ceilToEven(pillHeight).clamp(64, 100);
 
-    // diameter tombol tengah (circle) dari total konten + buffer
+    // ---- Diameter circle tengah: konten + padding + buffer ----
     double centerContentH =
         iconSize + gapIconText + textH + (centerItemVerticalPadding * 2);
-    double centerDiameter = _ceilToEven(centerContentH + 10); // +buffer
-    centerDiameter = _clampDouble(centerDiameter, 56, 132);
+    double centerDiameter = _ceilToEven(centerContentH + 10).clamp(56, 132);
 
-    // ruang kosong di tengah supaya kiri/kanan gak ketabrak circle
-    final double reservedMiddleWidth = centerDiameter + 24;
-
-    // posisi vertikal tombol tengah relatif terhadap pill
-    final double centerBottom =
+    // ---- Posisi “dasar” circle relatif ke bottom ----
+    final double centerBottomBase =
         pillBottomMargin + (pillHeight / 2) + centerLift;
 
-    // tinggi total navbar (agar aman dari overflow)
+    // Terapkan offset khusus circle (positif = turun)
+    final double centerBottom = math.max(0, centerBottomBase - centerOffset);
+
+    // ---- Lebar ruang kosong di tengah agar sisi tidak ketabrak circle ----
+    final double reservedMiddleWidth = centerDiameter + 24;
+
+    // ---- Tinggi total navbar: maksimal antara tinggi pill & tinggi circle ----
+    final double pillTopExtent = pillBottomMargin + pillHeight;
+    final double circleTopExtent = centerBottom + (centerDiameter / 2);
     final double navTotalHeight =
-        centerBottom + (centerDiameter / 2) + shadowPad;
+        math.max(pillTopExtent, circleTopExtent) + shadowPad;
 
     return SafeArea(
       top: false,
@@ -87,8 +95,9 @@ class BottomNavApp extends StatelessWidget {
         height: navTotalHeight,
         child: Stack(
           alignment: Alignment.bottomCenter,
+          clipBehavior: Clip.none, // << jangan clip kalau ada rounding 1–2px
           children: [
-            // ---- pill background (rounded + shadow) ----
+            // ---- Pill background ----
             Positioned(
               left: 16,
               right: 16,
@@ -110,6 +119,7 @@ class BottomNavApp extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildSideItem(
+                        ctx: context,
                         asset: badges,
                         activeAsset: badgesActive,
                         label: 'badges',
@@ -122,6 +132,7 @@ class BottomNavApp extends StatelessWidget {
                     SizedBox(width: reservedMiddleWidth),
                     Expanded(
                       child: _buildSideItem(
+                        ctx: context,
                         asset: stats,
                         activeAsset: statsActive,
                         label: 'stats',
@@ -136,11 +147,11 @@ class BottomNavApp extends StatelessWidget {
               ),
             ),
 
-            // ---- tombol tengah (home) ----
+            // ---- Tombol tengah (home) ----
             Positioned(
               bottom: centerBottom,
               child: _buildCenterItem(
-                ctx: context, // << penting: kirim context ke helper
+                ctx: context,
                 asset: home,
                 activeAsset: homeActive,
                 label: 'home',
@@ -157,8 +168,9 @@ class BottomNavApp extends StatelessWidget {
     );
   }
 
-  /// Item kiri/kanan di dalam pill
+  /// Item kiri/kanan dalam pill
   Widget _buildSideItem({
+    required BuildContext ctx,
     required String asset,
     String? activeAsset,
     required String label,
@@ -185,14 +197,18 @@ class BottomNavApp extends StatelessWidget {
               fit: BoxFit.contain,
             ),
             SizedBox(height: gap),
-            Text(
-              label,
-              style: bodyText12.copyWith(
-                color: color,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            // kunci scale biar gak nambah 1px & bikin overflow
+            MediaQuery(
+              data: MediaQuery.of(ctx).copyWith(textScaleFactor: 1.0),
+              child: Text(
+                label,
+                style: bodyText12.copyWith(
+                  color: color,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -200,9 +216,9 @@ class BottomNavApp extends StatelessWidget {
     );
   }
 
-  /// Item tengah (circle + shadow) — ukuran dikunci oleh `diameter`
+  /// Item tengah (circle + shadow)
   Widget _buildCenterItem({
-    required BuildContext ctx, // << terima ctx buat MediaQuery
+    required BuildContext ctx,
     required String asset,
     String? activeAsset,
     required String label,
@@ -244,7 +260,6 @@ class BottomNavApp extends StatelessWidget {
                 fit: BoxFit.contain,
               ),
               SizedBox(height: gap),
-              // batasi textScale di tombol tengah agar tidak meledak
               MediaQuery(
                 data: MediaQuery.of(ctx).copyWith(textScaleFactor: 1.0),
                 child: Text(
@@ -267,7 +282,6 @@ class BottomNavApp extends StatelessWidget {
 
 /// --- Helpers ---
 
-/// Ukur tinggi satu baris teks (menghormati textScaleFactor)
 double _measureOneLineHeight(
   BuildContext context,
   TextStyle style,
@@ -279,18 +293,10 @@ double _measureOneLineHeight(
     textDirection: TextDirection.ltr,
     textScaleFactor: MediaQuery.of(context).textScaleFactor,
   )..layout();
-  return tp.height + 2; // buffer kecil buat asc/desc
+  return tp.height + 2; // buffer
 }
 
-/// Bulatkan ke angka genap biar layout “rapi”
 double _ceilToEven(double v) {
   final x = v.ceil();
   return x.isOdd ? (x + 1).toDouble() : x.toDouble();
-}
-
-/// Clamp double (karena clamp() mengembalikan num)
-double _clampDouble(double v, double min, double max) {
-  if (v < min) return min;
-  if (v > max) return max;
-  return v;
 }
