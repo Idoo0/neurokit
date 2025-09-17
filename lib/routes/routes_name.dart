@@ -5,4 +5,5 @@ abstract class RoutesName {
   static const warmUp = '/warm-up';
   static const badges = '/badges';
   static const settings = '/settings';
+  static const onboarding = '/onboarding';
 }
