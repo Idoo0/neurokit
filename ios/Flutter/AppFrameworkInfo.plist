@@ -24,3 +24,11 @@
   <string>13.0</string>
 </dict>
 </plist>
+
+<!-- iOS: Info.plist -->
+<!-- ====== UNCOMMENT WHEN READY ======
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>App menggunakan Bluetooth untuk terhubung ke NeuroKit.</string>
+<key>NSBluetoothPeripheralUsageDescription</key>
+<string>App membutuhkan akses Bluetooth.</string>
+======================================= -->
