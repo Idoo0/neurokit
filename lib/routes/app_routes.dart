@@ -6,9 +6,10 @@ import '../view/study_session_page.dart';
 import '../view/badges_page.dart';
 // import '../view/settings_page.dart';
 import 'routes_name.dart';
+import '../view/onboarding_flow.dart';
 
 class AppRoutes {
-  static const initRoute = RoutesName.homepage;
+  static const initRoute = RoutesName.onboardingFlow;
   static final routes = [
     GetPage(
       name: RoutesName.homepage,
@@ -44,5 +45,10 @@ class AppRoutes {
     //   page: () => const SettingsPage(),
     //   transition: Transition.fade,
     // ),
+    GetPage(
+      name: RoutesName.onboardingFlow,
+      page: () => const OnboardingFlowScreen(),
+      transition: Transition.fade,
+    ),
   ];
 }
