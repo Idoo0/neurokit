@@ -64,6 +64,7 @@ class Onboarding extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {
                   // TODO: Add navigation logic here
+                  Navigator.pushNamed(context, '/introduction');
                   print('Get Started button pressed');
                 },
                 style: ElevatedButton.styleFrom(
