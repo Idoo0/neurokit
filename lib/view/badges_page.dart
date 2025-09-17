@@ -1,3 +1,5 @@
+// badges_page.dart
+
 import 'package:flutter/material.dart';
 import '../utils.dart';
 
@@ -24,60 +26,42 @@ class BadgesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Warna kustom sesuai permintaan Anda
+    // --- LANGKAH 1: SIMULASI SKOR STREAK ---
+    // Ganti nilai ini untuk menguji lencana yang berbeda.
+    // Nantinya, nilai ini akan diambil dari local storage.
+    final int currentStreak = 364; 
+
+    // Warna kustom
     const Color badgeBlue = Color(0xFF1A5CBA);
     const Color badgeYellow = Color(0xFFFFD702);
 
-    final List<BadgeInfo> badges = [
-      BadgeInfo(
-        level: 'Level 1',
-        title: 'Spark Seeker',
-        isUnlocked: true,
-        color: badgeBlue,
-      ),
-      BadgeInfo(
-        level: 'Level 2',
-        title: 'Memory Scout',
-        isUnlocked: true,
-        color: badgeYellow,
-      ),
-      BadgeInfo(
-        level: 'Level 3',
-        title: 'Clarity Chaser',
-        isUnlocked: false,
-        color: Colors.grey,
-      ),
-      BadgeInfo(
-        level: 'Level 4',
-        title: 'Mind Pathfinder',
-        isUnlocked: false,
-        color: Colors.grey,
-      ),
-      BadgeInfo(
-        level: 'Level 5',
-        title: 'Light Jumper',
-        isUnlocked: false,
-        color: Colors.grey,
-      ),
-      BadgeInfo(
-        level: 'Level 6',
-        title: 'Aurora Architect',
-        isUnlocked: false,
-        color: Colors.grey,
-      ),
-      BadgeInfo(
-        level: 'Level 7',
-        title: 'Cognitive Climb',
-        isUnlocked: false,
-        color: Colors.grey,
-      ),
-      BadgeInfo(
-        level: 'Level 8',
-        title: 'Mind Guardian',
-        isUnlocked: false,
-        color: Colors.grey,
-      ),
+    // --- LANGKAH 2: DEFINISIKAN SEMUA LENCANA DAN SYARATNYA ---
+    // Daftar ini berisi semua kemungkinan lencana dan skor yang dibutuhkan untuk membukanya.
+    final List<Map<String, dynamic>> allBadgesData = [
+      {'level': 'Level 1', 'title': 'Spark Seeker', 'requiredStreak': 1, 'color': badgeBlue},
+      {'level': 'Level 2', 'title': 'Memory Scout', 'requiredStreak': 7, 'color': badgeYellow},
+      {'level': 'Level 3', 'title': 'Clarity Chaser', 'requiredStreak': 14, 'color': badgeBlue},
+      {'level': 'Level 4', 'title': 'Mind Pathfinder', 'requiredStreak': 30, 'color': badgeYellow},
+      {'level': 'Level 5', 'title': 'Light Jumper', 'requiredStreak': 60, 'color': badgeBlue},
+      {'level': 'Level 6', 'title': 'Aurora Architect', 'requiredStreak': 90, 'color': badgeYellow},
+      {'level': 'Level 7', 'title': 'Cognitive Climb', 'requiredStreak': 180, 'color': badgeBlue},
+      {'level': 'Level 8', 'title': 'Mind Guardian', 'requiredStreak': 365, 'color': badgeYellow},
     ];
+
+    // --- LANGKAH 3: BUAT DAFTAR LENCANA SECARA DINAMIS ---
+    // Kita menggunakan .map() untuk mengubah allBadgesData menjadi List<BadgeInfo>
+    // sambil memeriksa apakah lencana sudah terbuka atau belum.
+    final List<BadgeInfo> badges = allBadgesData.map((badgeData) {
+      final bool isUnlocked = currentStreak >= badgeData['requiredStreak'];
+      return BadgeInfo(
+        level: badgeData['level'],
+        title: badgeData['title'],
+        isUnlocked: isUnlocked,
+        // Jika terbuka, gunakan warna aslinya. Jika tidak, gunakan abu-abu.
+        color: isUnlocked ? badgeData['color'] : Colors.grey,
+      );
+    }).toList();
+
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -115,14 +99,13 @@ class BadgesPage extends StatelessWidget {
   }
 
   Widget _buildBadgeItem(BadgeInfo badge) {
+    // Logika di sini tidak perlu diubah, karena sudah membaca status 'isUnlocked'
     final Color badgeColor = badge.isUnlocked ? badge.color : neutral200;
     final Color textColor = badge.isUnlocked ? Colors.white : neutral400;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // --- PERBAIKAN DI SINI ---
-        // Menambahkan Flexible untuk mencegah overflow di dalam Column
         Flexible(
           child: AspectRatio(
             aspectRatio: 0.9,
