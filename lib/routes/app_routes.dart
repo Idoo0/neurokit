@@ -7,12 +7,10 @@ import '../view/study_session_page.dart';
 import '../view/badges_page.dart';
 // import '../view/settings_page.dart';
 import 'routes_name.dart';
-import '../view/onboarding.dart';
-import '../view/introduction_page.dart';
-import '../view/dream_page.dart';
+import '../view/onboarding_flow.dart';
 
 class AppRoutes {
-  static const initRoute = RoutesName.onboarding;
+  static const initRoute = RoutesName.onboardingFlow;
   static final routes = [
     GetPage(
       name: RoutesName.homepage,
@@ -49,19 +47,9 @@ class AppRoutes {
     //   transition: Transition.fade,
     // ),
     GetPage(
-      name: RoutesName.onboarding,
-      page: () => const Onboarding(),
+      name: RoutesName.onboardingFlow,
+      page: () => const OnboardingFlowScreen(),
       transition: Transition.fade,
-    ),
-    GetPage(
-      name: RoutesName.introduction,
-      page: () => const IntroductionScreen(),
-      transition: Transition.rightToLeft,
-    ),
-    GetPage(
-      name: RoutesName.dream,
-      page: () => const DreamScreen(),
-      transition: Transition.rightToLeft,
     ),
   ];
 }
