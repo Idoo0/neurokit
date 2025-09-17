@@ -1,6 +1,7 @@
 // lib/view/onboarding_flow_screen.dart
 
 import 'package:flutter/material.dart';
+import '../services/local_storage_service.dart';
 
 class OnboardingFlowScreen extends StatefulWidget {
   const OnboardingFlowScreen({super.key});
@@ -177,6 +178,8 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
 
   // Page 3: Dream
   Widget _buildDreamPage(Color primaryBlue) {
+
+    final localStorageService = LocalStorageService();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -197,10 +200,25 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
         ),
         const Spacer(),
         ElevatedButton(
-          onPressed: () {
-            // This is the final step, navigate to the main app
-            print('Onboarding complete!');
-            Navigator.pushReplacementNamed(context, '/homepage');
+          // Make the onPressed callback async
+          onPressed: () async {
+            // This is the final step, save data and then navigate
+            print('Saving user data...');
+
+            // Use the service to save the data from the controllers
+            await localStorageService.saveUserData(
+              name: _nameController.text,
+              userClass: _selectedClass ?? 'Lainnya', // Provide a default value
+              university: _universityController.text,
+              major: _majorController.text,
+            );
+
+            print('Onboarding complete! Navigating to homepage...');
+            
+            // Use pushReplacementNamed to prevent user from going back to onboarding
+            if (mounted) { // Check if the widget is still in the tree
+              Navigator.pushReplacementNamed(context, '/homepage');
+            }
           },
           style: _buttonStyle(primaryBlue),
           child: const Text('Ayo Mulai'),
