@@ -1,10 +1,10 @@
 import 'package:get/get.dart';
-import '../pages/homepage_page.dart';
-import '../pages/stats_page.dart';
-import '../pages/study_session_page.dart';
-import '../pages/warm_up_page.dart';
-import '../pages/badges_page.dart';
-import '../pages/settings_page.dart';
+import '../view/homepage.dart';
+import '../view/stats_page.dart';
+import '../view/study_session_page.dart';
+// import '../view/warm_up_page.dart';
+import '../view/badges_page.dart';
+// import '../view/settings_page.dart';
 import 'routes_name.dart';
 
 class AppRoutes {
@@ -25,11 +25,11 @@ class AppRoutes {
       page: () => const StudySessionPage(),
       transition: Transition.fade,
     ),
-    GetPage(
-      name: RoutesName.warmUp,
-      page: () => const WarmUpPage(),
-      transition: Transition.fade,
-    ),
+    // GetPage(
+    //   name: RoutesName.warmUp,
+    //   page: () => const WarmUpPage(),
+    //   transition: Transition.fade,
+    // ),
     GetPage(
       name: RoutesName.badges,
       page: () => BadgesPage(
@@ -39,10 +39,10 @@ class AppRoutes {
       ),
       transition: Transition.fade,
     ),
-    GetPage(
-      name: RoutesName.settings,
-      page: () => const SettingsPage(),
-      transition: Transition.fade,
-    ),
+    // GetPage(
+    //   name: RoutesName.settings,
+    //   page: () => const SettingsPage(),
+    //   transition: Transition.fade,
+    // ),
   ];
 }
