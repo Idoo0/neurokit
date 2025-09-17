@@ -8,6 +8,8 @@ import '../view/badges_page.dart';
 // import '../view/settings_page.dart';
 import 'routes_name.dart';
 import '../view/onboarding.dart';
+import '../view/introduction_page.dart';
+import '../view/dream_page.dart';
 
 class AppRoutes {
   static const initRoute = RoutesName.onboarding;
@@ -50,6 +52,16 @@ class AppRoutes {
       name: RoutesName.onboarding,
       page: () => const Onboarding(),
       transition: Transition.fade,
+    ),
+    GetPage(
+      name: RoutesName.introduction,
+      page: () => const IntroductionScreen(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: RoutesName.dream,
+      page: () => const DreamScreen(),
+      transition: Transition.rightToLeft,
     ),
   ];
 }
