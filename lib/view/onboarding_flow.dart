@@ -200,6 +200,7 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
           onPressed: () {
             // This is the final step, navigate to the main app
             print('Onboarding complete!');
+            Navigator.pushReplacementNamed(context, '/homepage');
           },
           style: _buttonStyle(primaryBlue),
           child: const Text('Ayo Mulai'),
