@@ -33,6 +33,7 @@ dependencies:
   intl: ^0.18.0
   get: ^4.6.6
   flutter_svg: ^2.0.7
+  flutter_tts: ^4.2.3
   google_fonts: ^6.2.1
   shared_preferences: ^2.5.3
   app_settings: ^5.1.1
