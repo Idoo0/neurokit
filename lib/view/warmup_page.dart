@@ -99,7 +99,12 @@ class _WarmUpPageState extends State<WarmUpPage> {
     });
   }
 
-  List<int> get _currentDigits => _questions[_qIndex];
+  List<int> get _currentDigits {
+    if (_questions.isEmpty) return const <int>[];
+    final lastIndex = _questions.length - 1;
+    final safeIndex = _qIndex.clamp(0, lastIndex);
+    return _questions[safeIndex];
+  }
 
   @override
   void dispose() {
@@ -144,9 +149,6 @@ class _WarmUpPageState extends State<WarmUpPage> {
     _startInputPhase();
   }
 
-  // ... (the rest of your code: _startInputPhase, _submitAnswer, _nextQuestionOrFinish, _modePicker, etc.)
-  // ... NO CHANGES NEEDED IN THE METHODS BELOW THIS LINE UNTIL THE UI WIDGETS
-
   void _startInputPhase() {
     setState(() {
       step = 2;
@@ -185,14 +187,24 @@ class _WarmUpPageState extends State<WarmUpPage> {
   }
 
   void _nextQuestionOrFinish() {
-    setState(() {
-      _qIndex++;
-      if (_qIndex >= 8) {
-        Get.toNamed(RoutesName.studySession);
-      } else {
-        _startShowSequence();
-      }
-    });
+    _questionTimer?.cancel();
+
+    // If this was the last question, do NOT increment _qIndex.
+    final lastIndex = _questions.length - 1;
+    final isLast = _qIndex >= lastIndex;
+
+    if (isLast) {
+      // Navigate after the current frame to avoid build re-entrancy.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Get.offNamed(RoutesName.studySession);
+      });
+      return;
+    }
+
+    // Otherwise go to the next question.
+    setState(() => _qIndex++);
+    _startShowSequence();
   }
 
   @override
@@ -248,10 +260,13 @@ class _WarmUpPageState extends State<WarmUpPage> {
   }
 
   Widget _showSequenceView() {
+    final total = _questions.length; // should be 8, but read dynamically
+    final shownIndex = (_qIndex + 1).clamp(1, total);
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Soal ${_qIndex + 1}/8", style: mobileH4),
+        Text("Soal $shownIndex/$total", style: mobileH4),
         const SizedBox(height: 24),
         Text(
           _isShowingSequence ? "Inget angkanya ya!" : "Siap-siap jawab",
@@ -259,7 +274,6 @@ class _WarmUpPageState extends State<WarmUpPage> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
-        // <-- 7. Updated this section to show the speaker icon with the digit
         SizedBox(
           height: 120,
           width: 120,
@@ -286,14 +300,16 @@ class _WarmUpPageState extends State<WarmUpPage> {
   }
 
   Widget _inputView() {
+    final total = _questions.length;
+    final shownIndex = (_qIndex + 1).clamp(1, total);
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Soal ${_qIndex + 1}/8", style: mobileH4),
+        Text("Soal $shownIndex/$total", style: mobileH4),
         const SizedBox(height: 12),
         Text("Masukkan urutan angkanya", style: mobileH3, textAlign: TextAlign.center),
         const SizedBox(height: 16),
-        // <-- 8. REMOVED the speaker IconButton from this view
         SizedBox(
           width: 220,
           child: TextField(
@@ -329,11 +345,17 @@ class _WarmUpPageState extends State<WarmUpPage> {
     );
   }
 
-  // ... (The rest of your UI widgets: _feedbackView, _answerCard, _statBox)
-  // ... NO CHANGES NEEDED IN THESE WIDGETS
   Widget _feedbackView() {
-    final expected = _currentDigits.map((e) => e.toString()).join();
+    // Use a safe index to read the just-answered question
+    final lastIndex = (_questions.length - 1).clamp(0, _questions.length == 0 ? 0 : _questions.length - 1);
+    final safeIndex = _qIndex.clamp(0, lastIndex);
+    final expected = _questions.isEmpty
+        ? ""
+        : _questions[safeIndex].map((e) => e.toString()).join();
+
     final user = _controller.text.trim();
+    final total = _questions.length;
+    final shownIndex = (_qIndex + 1).clamp(1, total);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -355,7 +377,7 @@ class _WarmUpPageState extends State<WarmUpPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _statBox("Soal", "${_qIndex + 1}/8", yellow700),
+            _statBox("Soal", "$shownIndex/$total", yellow700),
             const SizedBox(width: 10),
             _statBox("Poin", _totalScore.toString(), brand400),
           ],
@@ -370,7 +392,7 @@ class _WarmUpPageState extends State<WarmUpPage> {
             ),
           ),
           child: Text(
-            _qIndex >= 7 ? "Mulai Sesi Belajar" : "Lanjut",
+            safeIndex >= total - 1 ? "Mulai Sesi Belajar" : "Lanjut",
             style: buttonText,
           ),
         ),

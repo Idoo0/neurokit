@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../routes/routes_name.dart';
+import '../utils.dart';
 
 class StudySessionPage extends StatefulWidget {
-  const StudySessionPage({Key? key}) : super(key: key);
+  const StudySessionPage({super.key});
 
   @override
   State<StudySessionPage> createState() => _StudySessionPageState();
@@ -22,44 +23,30 @@ class _StudySessionPageState extends State<StudySessionPage> {
 
   // ---- lifecycle ----
   @override
-  void initState() {
-    super.initState();
-    // If you ever want to auto-start, call _startSession() here.
-  }
-
-  @override
   void dispose() {
     _ticker?.cancel();
     super.dispose();
   }
 
-  // ---- helpers ----
-  String _formatDuration(Duration d) {
-    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    final hh = d.inHours;
-    return hh > 0 ? '$hh:$mm:$ss' : '$mm:$ss';
-    // For 20 mins, it'll show mm:ss (e.g., 19:59)
-  }
-
+  // ---- logic ----
   void _startSession() {
     setState(() {
       step = 1;
-      _remaining = _totalDuration; // reset to full 20 mins when starting
+      _remaining = _totalDuration; // reset to full duration
     });
     _startTicker();
   }
 
   void _startTicker() {
     _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+    _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {
         final next = _remaining - const Duration(seconds: 1);
         _remaining = next.isNegative ? Duration.zero : next;
         if (_remaining == Duration.zero) {
-          t.cancel();
-          _endSession(userStopped: false); // time up → end session
+          timer.cancel();
+          _endSession(userStopped: false); // time's up
         }
       });
     });
@@ -76,36 +63,17 @@ class _StudySessionPageState extends State<StudySessionPage> {
   }
 
   void _endSession({required bool userStopped}) {
-    // no LED controller yet — safe to leave TODO
-    // TODO: when IoT ready, turn OFF LED here (try/catch)
-
-    // Navigate to Motivation (after study). Motivation has safe fallbacks.
+    // Navigate to the motivation/results page
     Get.offNamed(
       RoutesName.motivation,
       arguments: {
-        'isStarting': false, // after study
+        'isStarting': false,
         'messages': const [
           'Great work today!',
-          'Take a deep breath.',
-          'You’re building a powerful habit.',
         ],
       },
     );
   }
-
-  // ---- styles ----
-  ButtonStyle _blueButton() => ElevatedButton.styleFrom(
-    backgroundColor: Colors.blue[900],
-    foregroundColor: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-  );
-
-  ButtonStyle _whiteOutlineButton() => OutlinedButton.styleFrom(
-    side: const BorderSide(color: Colors.black12, width: 1),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-  );
 
   // ---- UI ----
   @override
@@ -126,116 +94,135 @@ class _StudySessionPageState extends State<StudySessionPage> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: content,
-          ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: content,
         ),
       ),
     );
   }
 
-  // -------------------------------
-  // Pre Session
-  // -------------------------------
+  // ---- UI Widgets ----
+
+  Widget _buildButton(
+      {required String text,
+        required VoidCallback onPressed,
+        bool isPrimary = true}) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: isPrimary
+          ? ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: brand600,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28)),
+        ),
+        child: Text(text, style: buttonText),
+      )
+          : OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: brand600,
+          side: const BorderSide(color: brand600, width: 1.5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28)),
+        ),
+        child: Text(text, style: buttonText.copyWith(color: brand600)),
+      ),
+    );
+  }
+
   Widget _preSession() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          "Sesi Belajar",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Oke, fokus.\nWaktunya mulai.",
+                style: mobileH2.copyWith(color: neutral800),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                AppFormatters.formatDuration(_totalDuration),
+                style: desktopH2.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
+        _buildButton(text: "Mulai", onPressed: _startSession),
         const SizedBox(height: 12),
-        Text(
-          "Durasi: ${_formatDuration(_totalDuration)}",
-          style: const TextStyle(fontSize: 16),
-        ),
-        const SizedBox(height: 30),
-        const Icon(Icons.self_improvement, size: 120, color: Colors.grey),
-        const SizedBox(height: 30),
-        ElevatedButton(
-          onPressed: _startSession,
-          style: _blueButton(),
-          child: const Text("Mulai"),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: () => Get.back(),
-          style: _whiteOutlineButton(),
-          child: const Text("Kembali"),
-        ),
+        _buildButton(
+            text: "Kembali", onPressed: () => Get.back(), isPrimary: false),
       ],
     );
   }
 
-  // -------------------------------
-  // Active Session
-  // -------------------------------
   Widget _activeSession() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          _formatDuration(_remaining),
-          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                AppFormatters.formatDuration(_remaining),
+                style: desktopH1.copyWith(
+                    fontWeight: FontWeight.bold, fontSize: 48),
+              ),
+              const SizedBox(height: 30),
+              Image.asset(
+                'assets/images/star-wink.png',
+                height: 400,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 30),
-        const Icon(Icons.nightlight_round, size: 120, color: Colors.grey),
-        const SizedBox(height: 40),
-        ElevatedButton(
-          onPressed: _pauseSession,
-          style: _blueButton(),
-          child: const Text("Jeda Sesi"),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
+        _buildButton(text: "Jeda Sesi", onPressed: _pauseSession),
+        const SizedBox(height: 12),
+        _buildButton(
+          text: "Hentikan Sesi",
           onPressed: () => _endSession(userStopped: true),
-          style: _whiteOutlineButton(),
-          child: const Text("Hentikan Sesi"),
+          isPrimary: false,
         ),
       ],
     );
   }
 
-  // -------------------------------
-  // Paused Session
-  // -------------------------------
   Widget _pausedSession() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          "Wih.. Jeda dulu\nTapi fokusnya jangan kabur",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Wih.. Jeda dulu\nTapi fokusnya jangan kabur",
+                style: mobileH2.copyWith(color: neutral800),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Sisa waktu: ${AppFormatters.formatDuration(_remaining)}",
+                style: bodyText16.copyWith(color: neutral600),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
-        Text(
-          "Sisa waktu: ${_formatDuration(_remaining)}",
-          style: const TextStyle(fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 40),
-        ElevatedButton(
-          onPressed: _resumeSession,
-          style: _blueButton(),
-          child: const Text("Lanjutkan Sesi"),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
+        _buildButton(text: "Lanjutkan Sesi", onPressed: _resumeSession),
+        const SizedBox(height: 12),
+        _buildButton(
+          text: "Hentikan Sesi",
           onPressed: () => _endSession(userStopped: true),
-          style: _whiteOutlineButton(),
-          child: const Text("Hentikan Sesi"),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: () => Get.back(),
-          style: _whiteOutlineButton(),
-          child: const Text("Kembali"),
+          isPrimary: false,
         ),
       ],
     );
