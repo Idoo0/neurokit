@@ -10,6 +10,7 @@ import '../controllers/session_controller.dart';
 import '../models/mode.dart';
 import '../models/session_state.dart'; // <-- pakai enum SessionPhase
 import '../routes/routes_name.dart';
+import '../services/local_storage_service.dart';
 import '../utils.dart';
 
 // Ganti import ini dengan file real kamu
@@ -101,15 +102,19 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     final mode = await showModePicker(context);
     if (mode == null) return;
 
-    // store the selection in your session controller (same as before)
+    // keep your existing controller logic
     await widget.session.selectMode(mode);
+
+    // persist to local storage for restore
+    final store = Get.find<LocalStorageService>();
+    await store.setSelectedModeString(mode.name);
 
     if (!mounted) return;
 
-    // jump straight to Motivation with the selected mode
+    // navigate to Motivation
     Get.toNamed(
       RoutesName.motivation,
-      arguments: {'mode': mode},
+      arguments: {'isStarting': true},
     );
   }
 
@@ -228,21 +233,6 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                );
-              }),
-
-              // ---------- Mode siap (kecil & rapi) ----------
-              const SizedBox(height: 12),
-              Obx(() {
-                final isPrepared =
-                    widget.session.phase.value == SessionPhase.prepared;
-                final selectedMode = widget.session.info?.mode;
-                if (!isPrepared || selectedMode == null) {
-                  return const SizedBox.shrink();
-                }
-                return Text(
-                  'Mode siap: ${selectedMode.name}',
-                  style: bodyText12.copyWith(color: neutral600),
                 );
               }),
             ],

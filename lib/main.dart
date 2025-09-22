@@ -6,6 +6,7 @@ import 'routes/app_routes.dart';
 // === Services & Controllers ===
 import 'services/ble_service.dart'; // stub sekarang, real nanti tinggal uncomment
 import 'services/audio_service.dart'; // stub sekarang, real nanti tinggal uncomment
+import 'services/local_storage_service.dart';
 import 'controllers/bluetooth_controller.dart';
 import 'controllers/music_controller.dart';
 import 'controllers/session_controller.dart';
@@ -43,6 +44,7 @@ class _CoreBinding extends Bindings {
     // Services (permanent agar tetap hidup sepanjang app)
     Get.put<BleService>(BleService(), permanent: true);
     Get.put<AudioService>(AudioService(), permanent: true);
+    Get.put<LocalStorageService>(LocalStorageService(), permanent: true); // ⬅️ NEW
 
     // Controllers yang bergantung pada services di atas
     Get.put<BluetoothController>(
@@ -62,3 +64,4 @@ class _CoreBinding extends Bindings {
     );
   }
 }
+
