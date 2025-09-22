@@ -1,263 +1,243 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../utils.dart'; // Impor utils untuk gaya
+import 'package:get/get.dart';
+import '../routes/routes_name.dart';
 
 class StudySessionPage extends StatefulWidget {
-  const StudySessionPage({super.key});
+  const StudySessionPage({Key? key}) : super(key: key);
 
   @override
-  State<StudySessionPage> createState() => StudySessionPageState();
+  State<StudySessionPage> createState() => _StudySessionPageState();
 }
 
-enum TimerState { idle, running, paused, finished }
+class _StudySessionPageState extends State<StudySessionPage> {
+  // step: 0 = pre-session, 1 = running, 2 = paused
+  int step = 0;
 
-class StudySessionPageState extends State<StudySessionPage> {
-  Timer? _timer;
-  Duration _duration = Duration.zero;
-  TimerState _timerState = TimerState.idle;
+  // total duration & remaining time
+  final Duration _totalDuration = const Duration(minutes: 20);
+  Duration _remaining = const Duration(minutes: 20);
 
-  TimerState get timerState => _timerState;
+  Timer? _ticker;
 
-  void startFocusSession() {
-    if (_timerState == TimerState.idle || _timerState == TimerState.finished) {
-      _duration = Duration.zero;
-      setState(() {
-        _timerState = TimerState.running;
-      });
-      _startTimer();
-    }
-  }
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _duration = Duration(seconds: _duration.inSeconds + 1);
-      });
-    });
-  }
-
-  void _pauseTimer() {
-    _timer?.cancel();
-    setState(() {
-      _timerState = TimerState.paused;
-    });
-  }
-
-  void _resumeTimer() {
-    setState(() {
-      _timerState = TimerState.running;
-    });
-    _startTimer();
-  }
-
-  void _stopTimer() {
-    _timer?.cancel();
-    setState(() {
-      _timerState = TimerState.finished;
-    });
-  }
-
-  void _resetToHome() {
-    _timer?.cancel();
-    setState(() {
-      _duration = Duration.zero;
-      _timerState = TimerState.idle;
-    });
-    // Di aplikasi nyata, Anda mungkin ingin menavigasi ke tab lain
-    // tapi karena kita sudah di dalam wrapper, cukup reset state
+  // ---- lifecycle ----
+  @override
+  void initState() {
+    super.initState();
+    // If you ever want to auto-start, call _startSession() here.
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.cancel();
     super.dispose();
   }
 
-  // Helper untuk format durasi HH:MM:SS
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String hours = twoDigits(duration.inHours);
-    String minutes = twoDigits(duration.inMinutes.remainder(60));
-    String seconds = twoDigits(duration.inSeconds.remainder(60));
-    return "$hours:$minutes:$seconds";
+  // ---- helpers ----
+  String _formatDuration(Duration d) {
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hh = d.inHours;
+    return hh > 0 ? '$hh:$mm:$ss' : '$mm:$ss';
+    // For 20 mins, it'll show mm:ss (e.g., 19:59)
   }
 
+  void _startSession() {
+    setState(() {
+      step = 1;
+      _remaining = _totalDuration; // reset to full 20 mins when starting
+    });
+    _startTicker();
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() {
+        final next = _remaining - const Duration(seconds: 1);
+        _remaining = next.isNegative ? Duration.zero : next;
+        if (_remaining == Duration.zero) {
+          t.cancel();
+          _endSession(userStopped: false); // time up → end session
+        }
+      });
+    });
+  }
+
+  void _pauseSession() {
+    _ticker?.cancel();
+    setState(() => step = 2);
+  }
+
+  void _resumeSession() {
+    setState(() => step = 1);
+    _startTicker();
+  }
+
+  void _endSession({required bool userStopped}) {
+    // no LED controller yet — safe to leave TODO
+    // TODO: when IoT ready, turn OFF LED here (try/catch)
+
+    // Navigate to Motivation (after study). Motivation has safe fallbacks.
+    Get.offNamed(
+      RoutesName.motivation,
+      arguments: {
+        'isStarting': false, // after study
+        'messages': const [
+          'Great work today!',
+          'Take a deep breath.',
+          'You’re building a powerful habit.',
+        ],
+      },
+    );
+  }
+
+  // ---- styles ----
+  ButtonStyle _blueButton() => ElevatedButton.styleFrom(
+    backgroundColor: Colors.blue[900],
+    foregroundColor: Colors.white,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+  );
+
+  ButtonStyle _whiteOutlineButton() => OutlinedButton.styleFrom(
+    side: const BorderSide(color: Colors.black12, width: 1),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+  );
+
+  // ---- UI ----
   @override
   Widget build(BuildContext context) {
+    Widget content;
+    switch (step) {
+      case 0:
+        content = _preSession();
+        break;
+      case 1:
+        content = _activeSession();
+        break;
+      case 2:
+        content = _pausedSession();
+        break;
+      default:
+        content = _preSession();
+    }
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.defaultPadding * 2),
-          // Menggunakan switch untuk menampilkan UI yang berbeda berdasarkan state
-          child: _buildUIForState(),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: content,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildUIForState() {
-    switch (_timerState) {
-      case TimerState.running:
-        return _buildRunningUI();
-      case TimerState.paused:
-        return _buildPausedUI();
-      case TimerState.finished:
-        return _buildFinishedUI();
-      case TimerState.idle:
-      default:
-        return _buildIdleUI();
-    }
-  }
-
-  // UI saat timer belum dimulai
-  Widget _buildIdleUI() {
+  // -------------------------------
+  // Pre Session
+  // -------------------------------
+  Widget _preSession() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Siap untuk Fokus?", style: desktopH2),
-        const SizedBox(height: 16),
-        Text(
-          "Tekan tombol 'fokus' di tengah bawah untuk memulai sesi belajarmu.",
-          style: bodyText16.copyWith(color: neutral500),
+        const Text(
+          "Sesi Belajar",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-      ],
-    );
-  }
-
-  // UI saat timer berjalan
-  Widget _buildRunningUI() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const SizedBox(height: 1), // Spacer
+        const SizedBox(height: 12),
         Text(
-          _formatDuration(_duration),
-          style: desktopH1.copyWith(fontSize: 56),
+          "Durasi: ${_formatDuration(_totalDuration)}",
+          style: const TextStyle(fontSize: 16),
         ),
-        Image.asset(
-          'assets/images/star-spark-glow.png',
-          height: 200,
-          color: neutral200,
+        const SizedBox(height: 30),
+        const Icon(Icons.self_improvement, size: 120, color: Colors.grey),
+        const SizedBox(height: 30),
+        ElevatedButton(
+          onPressed: _startSession,
+          style: _blueButton(),
+          child: const Text("Mulai"),
         ),
-        Column(
-          children: [
-            _buildActionButton(
-              label: 'Jeda Sesi',
-              onPressed: _pauseTimer,
-              isPrimary: true,
-            ),
-            const SizedBox(height: 16),
-            _buildActionButton(
-              label: 'Hentikan Sesi',
-              onPressed: _stopTimer,
-              isPrimary: false,
-            ),
-          ],
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: () => Get.back(),
+          style: _whiteOutlineButton(),
+          child: const Text("Kembali"),
         ),
       ],
     );
   }
 
-  // UI saat timer dijeda
-  Widget _buildPausedUI() {
+  // -------------------------------
+  // Active Session
+  // -------------------------------
+  Widget _activeSession() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const SizedBox(height: 1), // Spacer
-        Column(
-          children: [
-            Text("Wih.. Jeda dulu", style: desktopH2),
-            const SizedBox(height: 8),
-            Text(
-              "Tapi fokusnya jangan kabur",
-              style: bodyText16.copyWith(color: neutral500),
-            ),
-          ],
+        Text(
+          _formatDuration(_remaining),
+          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
         ),
-        // Ganti dengan path aset bintang Anda
-        Image.asset(
-          'assets/images/star_inactive.png',
-          height: 200,
-          color: neutral200,
+        const SizedBox(height: 30),
+        const Icon(Icons.nightlight_round, size: 120, color: Colors.grey),
+        const SizedBox(height: 40),
+        ElevatedButton(
+          onPressed: _pauseSession,
+          style: _blueButton(),
+          child: const Text("Jeda Sesi"),
         ),
-        Column(
-          children: [
-            _buildActionButton(
-              label: 'Lanjutkan Sesi',
-              onPressed: _resumeTimer,
-              isPrimary: true,
-            ),
-            const SizedBox(height: 16),
-            _buildActionButton(
-              label: 'Hentikan Sesi',
-              onPressed: _stopTimer,
-              isPrimary: false,
-            ),
-          ],
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: () => _endSession(userStopped: true),
+          style: _whiteOutlineButton(),
+          child: const Text("Hentikan Sesi"),
         ),
       ],
     );
   }
 
-  // UI saat sesi selesai
-  Widget _buildFinishedUI() {
+  // -------------------------------
+  // Paused Session
+  // -------------------------------
+  Widget _pausedSession() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const SizedBox(height: 1), // Spacer
-        Column(
-          children: [
-            Text("Sesi Fokus Selesai!", style: desktopH2),
-            const SizedBox(height: 32),
-            // Ganti dengan path aset bintang Anda yang sudah jadi
-            Image.asset('assets/images/star-spark-glow.png', height: 200),
-            const SizedBox(height: 32),
-            Text("Kerja bagus!", style: bodyText16),
-            Text(
-              "kamu mendapatkan 10 poin",
-              style: bodyText16.copyWith(color: neutral500),
-            ),
-          ],
+        const Text(
+          "Wih.. Jeda dulu\nTapi fokusnya jangan kabur",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
         ),
-        _buildActionButton(
-          label: 'Home',
-          onPressed: _resetToHome,
-          isPrimary: true,
+        const SizedBox(height: 20),
+        Text(
+          "Sisa waktu: ${_formatDuration(_remaining)}",
+          style: const TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 40),
+        ElevatedButton(
+          onPressed: _resumeSession,
+          style: _blueButton(),
+          child: const Text("Lanjutkan Sesi"),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: () => _endSession(userStopped: true),
+          style: _whiteOutlineButton(),
+          child: const Text("Hentikan Sesi"),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: () => Get.back(),
+          style: _whiteOutlineButton(),
+          child: const Text("Kembali"),
         ),
       ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    required VoidCallback onPressed,
-    required bool isPrimary,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? brand800 : Colors.white,
-          foregroundColor: isPrimary ? Colors.white : brand800,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-            side: isPrimary
-                ? BorderSide.none
-                : const BorderSide(color: brand800, width: 1.5),
-          ),
-          elevation: isPrimary ? 2 : 0,
-        ),
-        child: Text(
-          label,
-          style: buttonText.copyWith(
-            color: isPrimary ? Colors.white : brand800,
-          ),
-        ),
-      ),
     );
   }
 }

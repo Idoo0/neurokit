@@ -9,4 +9,6 @@ abstract class RoutesName {
   static const introduction = '/introduction';
   static const dream = '/dream';
   static const onboardingFlow = '/onboarding-flow';
+  static const motivation = '/motivation';
+  static const studyResult = '/study-result';
 }
