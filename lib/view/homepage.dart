@@ -9,6 +9,7 @@ import '../controllers/session_controller.dart';
 
 import '../models/mode.dart';
 import '../models/session_state.dart'; // <-- pakai enum SessionPhase
+import '../routes/routes_name.dart';
 import '../utils.dart';
 
 // Ganti import ini dengan file real kamu
@@ -99,10 +100,16 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   Future<void> _openModePicker() async {
     final mode = await showModePicker(context);
     if (mode == null) return;
+
+    // store the selection in your session controller (same as before)
     await widget.session.selectMode(mode);
-    AppUtils.showSnackBar(
-      context,
-      'Mode ${mode.name} tersimpan. Mulai sesi di halaman fokus.',
+
+    if (!mounted) return;
+
+    // jump straight to Motivation with the selected mode
+    Get.toNamed(
+      RoutesName.motivation,
+      arguments: {'mode': mode},
     );
   }
 
@@ -119,6 +126,8 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             children: [
               // ---------- Heading ----------
+              const SizedBox(height: 24),
+
               Padding(
                 padding: const EdgeInsets.only(top: 8.0, bottom: 6.0),
                 child: Text(
@@ -135,12 +144,12 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
 
               const SizedBox(height: 24),
 
-              // ---------- Star button (pakai PNG kamu) ----------
+              // ---------- Star button ----------
               InkWell(
                 borderRadius: BorderRadius.circular(24),
                 onTap: _openModePicker,
                 child: SizedBox(
-                  height: 200,
+                  height: 400,
                   child: Image.asset(
                     widget.starAsset,
                     fit: BoxFit.contain,

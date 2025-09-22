@@ -71,11 +71,15 @@ class _MotivationPageState extends State<MotivationPage> {
 
   Widget _messageScreen() {
     final msg = widget.messages.isNotEmpty ? widget.messages[step] : "Let's get started!";
-    final isLastMessage = step >= widget.messages.length - 1;
+    final isFirst = step == 0;
+    final isLast = step >= widget.messages.length - 1;
     final screenHeight = AppUtils.screenHeight(context);
 
+    // First tap = "Mulai", middle = "Lanjut", final = "Selesai"
+    final buttonText = isFirst ? "Mulai" : (isLast ? "Selesai" : "Lanjut");
+
     void handlePress() {
-      if (!isLastMessage) {
+      if (!isLast) {
         setState(() => step++);
       } else {
         if (widget.isStarting) {
@@ -127,7 +131,7 @@ class _MotivationPageState extends State<MotivationPage> {
             bottom: screenHeight * 0.35,
             left: 30,
             child: Image.asset(
-              "assets/images/music-spark-confetti.PNG",
+              "assets/images/music-spark-confetti.png",
               width: 120,
             ),
           ),
@@ -137,7 +141,7 @@ class _MotivationPageState extends State<MotivationPage> {
             bottom: screenHeight * 0.35,
             right: 30,
             child: Image.asset(
-              "assets/images/star-spark-confetti.PNG",
+              "assets/images/star-spark-confetti.png",
               width: 130,
             ),
           ),
@@ -154,7 +158,7 @@ class _MotivationPageState extends State<MotivationPage> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   child: Text(
-                    isLastMessage ? "Selesai" : "Mulai",
+                    buttonText,
                     style: mobileH3.copyWith(color: brand700),
                   ),
                 ),
