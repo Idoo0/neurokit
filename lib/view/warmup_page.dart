@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // <-- 1. Import the package
 import 'package:get/get.dart';
 import '../routes/routes_name.dart';
+import '../services/local_storage_service.dart';
 import '../utils.dart';
 
 class WarmUpPage extends StatefulWidget {
@@ -186,7 +187,7 @@ class _WarmUpPageState extends State<WarmUpPage> {
     });
   }
 
-  void _nextQuestionOrFinish() {
+  Future<void> _nextQuestionOrFinish() async {
     _questionTimer?.cancel();
 
     // If this was the last question, do NOT increment _qIndex.
@@ -194,6 +195,11 @@ class _WarmUpPageState extends State<WarmUpPage> {
     final isLast = _qIndex >= lastIndex;
 
     if (isLast) {
+      // ⬇️ Persist warmup summary and stamp study start time
+      final store = Get.find<LocalStorageService>();
+      await store.setWarmupResult(score: _totalScore, totalQuestions: _questions.length);
+      await store.markStudyStartedNow();
+
       // Navigate after the current frame to avoid build re-entrancy.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;

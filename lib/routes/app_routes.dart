@@ -12,7 +12,7 @@ import 'routes_name.dart';
 import '../view/onboarding_flow.dart';
 
 class AppRoutes {
-  static const initRoute = RoutesName.motivation;
+  static const initRoute = RoutesName.onboardingFlow;
 
   static final routes = [
     GetPage(

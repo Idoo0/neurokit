@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../routes/routes_name.dart';
+import '../services/local_storage_service.dart';
 import '../utils.dart';
 
 class StudySessionPage extends StatefulWidget {
@@ -29,7 +30,14 @@ class _StudySessionPageState extends State<StudySessionPage> {
   }
 
   // ---- logic ----
-  void _startSession() {
+  void _startSession() async {
+    // ensure we have a start timestamp
+    final store = Get.find<LocalStorageService>();
+    final s = await store.getStudySummary();
+    if (s['startedAt'] == null) {
+      await store.markStudyStartedNow();
+    }
+
     setState(() {
       step = 1;
       _remaining = _totalDuration; // reset to full duration
@@ -62,15 +70,23 @@ class _StudySessionPageState extends State<StudySessionPage> {
     _startTicker();
   }
 
-  void _endSession({required bool userStopped}) {
-    // Navigate to the motivation/results page
+  void _endSession({required bool userStopped}) async {
+    final store = Get.find<LocalStorageService>();
+    final summary = await store.getStudySummary();
+    final startedAt = summary['startedAt'] as DateTime?;
+    final fallbackElapsed = _totalDuration.inSeconds - _remaining.inSeconds;
+    final seconds = startedAt == null
+        ? (fallbackElapsed < 0 ? 0 : fallbackElapsed)
+        : DateTime.now().difference(startedAt).inSeconds;
+
+    await store.markStudyCompleted(durationSeconds: seconds);
+
     Get.offNamed(
       RoutesName.motivation,
       arguments: {
         'isStarting': false,
-        'messages': const [
-          'Great work today!',
-        ],
+        // use your route defaults or a short wrap-up message
+        // 'messages': const ['Great work today!'],
       },
     );
   }
