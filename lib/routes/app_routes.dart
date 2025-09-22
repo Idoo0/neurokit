@@ -37,23 +37,7 @@ class AppRoutes {
     ),
     GetPage(
       name: RoutesName.motivation,
-      page: () {
-        // Safe fallback so LLM args are optional
-        final args = Get.arguments as Map<String, dynamic>?;
-
-        final isStarting = args?['isStarting'] as bool? ?? true;
-        final messages = (args?['messages'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
-            const [
-              'Believe in yourself!',
-            ];
-
-        return MotivationPage(
-          isStarting: isStarting,
-          messages: messages,
-        );
-      },
+      page: () => const MotivationPage(),  // no arg parsing here
       transition: Transition.fade,
     ),
     GetPage(

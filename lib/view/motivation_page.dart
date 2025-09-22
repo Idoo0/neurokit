@@ -21,13 +21,15 @@ class _InvertedArcClipper extends CustomClipper<Path> {
 }
 
 class MotivationPage extends StatefulWidget {
-  final bool isStarting;
-  final List<String> messages;
+  // Make params optional so route can construct without args
   const MotivationPage({
     Key? key,
-    required this.isStarting,
-    required this.messages,
+    this.isStarting,
+    this.messages,
   }) : super(key: key);
+
+  final bool? isStarting;
+  final List<String>? messages;
 
   @override
   State<MotivationPage> createState() => _MotivationPageState();
@@ -36,25 +38,42 @@ class MotivationPage extends StatefulWidget {
 class _MotivationPageState extends State<MotivationPage> {
   int step = -1;
 
+  // Local copies resolved from either widget props or Get.arguments
+  late bool _isStarting;
+  late List<String> _messages;
+
   @override
   void initState() {
     super.initState();
+
+    // 1) Read args if not provided via constructor
+    final args = Get.arguments as Map<String, dynamic>?;
+
+    _isStarting = widget.isStarting ?? (args?['isStarting'] as bool? ?? true);
+
+    final List<String>? passed =
+        widget.messages ??
+            (args?['messages'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList();
+
+    // 2) Fallback copy lives HERE (widget owns defaults)
+    _messages = (passed == null || passed.isEmpty)
+        ? (_isStarting
+        ? const ['Believe in yourself!']
+        : const ['Great work for today!'])
+        : passed;
+
+    // 3) Kick off the little loading -> message
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          step = 0;
-        });
-      }
+      if (mounted) setState(() => step = 0);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (step == -1) {
-      return _loadingScreen();
-    } else {
-      return _messageScreen();
-    }
+    if (step == -1) return _loadingScreen();
+    return _messageScreen();
   }
 
   Widget _loadingScreen() {
@@ -62,7 +81,7 @@ class _MotivationPageState extends State<MotivationPage> {
       backgroundColor: brand700,
       body: Center(
         child: Text(
-          widget.isStarting ? "Memulai Sesimu..." : "Mengakhiri Sesimu...",
+          _isStarting ? "Memulai Sesimu..." : "Mengakhiri Sesimu...",
           style: mobileH2.copyWith(color: Colors.white),
         ),
       ),
@@ -70,19 +89,22 @@ class _MotivationPageState extends State<MotivationPage> {
   }
 
   Widget _messageScreen() {
-    final msg = widget.messages.isNotEmpty ? widget.messages[step] : "Let's get started!";
+    final msg = _messages.isNotEmpty ? _messages[step] : "Let's get started!";
     final isFirst = step == 0;
-    final isLast = step >= widget.messages.length - 1;
+    final isLast = step >= _messages.length - 1;
     final screenHeight = AppUtils.screenHeight(context);
 
-    // First tap = "Mulai", middle = "Lanjut", final = "Selesai"
-    final buttonText = isFirst ? "Mulai" : (isLast ? "Selesai" : "Lanjut");
+    // Start flow: first=Mulai, middle=Lanjut, last=Selesai
+    // End flow:   never show "Mulai"
+    final buttonText = _isStarting
+        ? (isFirst ? "Mulai" : (isLast ? "Selesai" : "Lanjut"))
+        : (isLast ? "Selesai" : "Lanjut");
 
     void handlePress() {
       if (!isLast) {
         setState(() => step++);
       } else {
-        if (widget.isStarting) {
+        if (_isStarting) {
           Get.offNamed(RoutesName.warmUp);
         } else {
           Get.offNamed(RoutesName.studyResult);
@@ -126,7 +148,7 @@ class _MotivationPageState extends State<MotivationPage> {
             ),
           ),
 
-          // Item 3: The music note image (sibling to the white arc)
+          // Item 3: The music note image
           Positioned(
             bottom: screenHeight * 0.35,
             left: 30,
@@ -136,7 +158,7 @@ class _MotivationPageState extends State<MotivationPage> {
             ),
           ),
 
-          // Item 4: The star image (sibling to the white arc)
+          // Item 4: The star image
           Positioned(
             bottom: screenHeight * 0.35,
             right: 30,
