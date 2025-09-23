@@ -140,7 +140,9 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
           child: const Text('Get Started'),
         ),
         TextButton(
-          onPressed: () { /* Handle skip */ },
+          onPressed: () {
+            Navigator.pushNamed(context, '/homepage');
+          },
           child: const Text('Skip', style: TextStyle(color: Colors.grey)),
         ),
         const SizedBox(height: 40),
