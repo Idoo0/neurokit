@@ -1,3 +1,4 @@
+// study_session_result_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../routes/routes_name.dart';
@@ -14,9 +15,10 @@ class StudySessionResultPage extends StatelessWidget {
 
     return FutureBuilder(
       future: Future.wait([
-        store.getWarmupSummary(),   // {'score': int, 'total': int, 'done': bool}
-        store.getStudySummary(),    // {'startedAt': DateTime?, 'durationSec': int, 'done': bool}
-        store.getSelectedModeString(), // String? (SessionMode.name) — optional
+        store.getWarmupSummary(),      // {'score': int, 'total': int, 'done': bool}
+        store.getStudySummary(),       // {'startedAt': DateTime?, 'durationSec': int, 'done': bool}
+        store.getSelectedModeString(), // String? (SessionMode.name)
+        store.getStats(),              // {'weeklyFocusSec': int, 'weekStartYmd': int, 'streakCount': int, 'lastYmd': int}
       ]),
       builder: (context, snap) {
         if (!snap.hasData) {
@@ -29,6 +31,8 @@ class StudySessionResultPage extends StatelessWidget {
         final warmup = snap.data![0] as Map<String, Object>;
         final study  = snap.data![1] as Map<String, Object?>;
         final modeStr = snap.data![2] as String?;
+        final stats  = snap.data![3] as Map<String, int>;
+
         SessionMode? mode;
         if (modeStr != null) {
           try { mode = SessionMode.values.firstWhere((e) => e.name == modeStr); } catch (_) {}
@@ -37,6 +41,8 @@ class StudySessionResultPage extends StatelessWidget {
         final score = (warmup['score'] as int?) ?? 0;
         final total = (warmup['total'] as int?) ?? 0;
         final durationSec = (study['durationSec'] as int?) ?? 0;
+        final weeklySec = stats['weeklyFocusSec'] ?? 0;
+        final streakCount = stats['streakCount'] ?? 0;
 
         String durationText;
         final mins = durationSec ~/ 60;
@@ -45,6 +51,15 @@ class StudySessionResultPage extends StatelessWidget {
           durationText = '${mins}m ${secs}s';
         } else {
           durationText = '${secs}s';
+        }
+
+        String weeklyText;
+        final weeklyMins = weeklySec ~/ 60;
+        final weeklySecs = weeklySec % 60;
+        if (weeklyMins > 0) {
+          weeklyText = '${weeklyMins}m ${weeklySecs}s';
+        } else {
+          weeklyText = '${weeklySecs}s';
         }
 
         return Scaffold(
@@ -86,6 +101,18 @@ class StudySessionResultPage extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         "Durasi belajar: $durationText",
+                        style: bodyText18.copyWith(color: neutral700),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Total fokus minggu ini: $weeklyText",
+                        style: bodyText18.copyWith(color: neutral700),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "🔥 Streak: $streakCount hari",
                         style: bodyText18.copyWith(color: neutral700),
                         textAlign: TextAlign.center,
                       ),
