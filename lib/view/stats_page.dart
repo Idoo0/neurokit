@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 // Make sure your utils.dart file path is correct
+import 'package:get/get.dart';
 import '../utils.dart';
+import '../services/local_storage_service.dart';
 
 class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
@@ -13,12 +15,12 @@ class _StatsPageState extends State<StatsPage> {
   // --- LANGKAH 1: SIAPKAN VARIABEL UNTUK MENAMPUNG DATA ---
   bool _isLoading = true;
   int _streakDays = 0;
-  int _totalFocusedMinutes = 0;
+  int _totalFocusedSeconds = 0;
   int _currentPoints = 0;
-  int _pointsForNextLevel = 2500;
+  int _pointsForNextLevel = 10000;
   int _level = 0;
   String _levelTitle = '';
-  String _quoteOfTheDay = '';
+  String _quoteOfTheDay = 'Belajar adalah investasi terbaik untuk masa depan.';
 
   @override
   void initState() {
@@ -31,19 +33,32 @@ class _StatsPageState extends State<StatsPage> {
   // Untuk sekarang, kita isi dengan data hardcoded.
   Future<void> _loadStatsData() async {
     // Simulasi penundaan jaringan atau database
-    await Future.delayed(const Duration(seconds: 1));
+    // await Future.delayed(const Duration(seconds: 1));
 
-    // Data hardcoded sebagai pengganti local storage
-    setState(() {
-      _streakDays = 125;
-      _totalFocusedMinutes = (14 * 60) + 10; // 14h 10m
-      _level = 3;
-      _levelTitle = 'MasterrrMind';
-      _currentPoints = 1240;
-      _pointsForNextLevel = 2500;
-      _quoteOfTheDay = '"Rasa lelah dan bosan yang kamu lawan saat ini hanyalah sementara, namun pemahaman yang kamu raih akan menjadi fondasi permanen yang membangun kecerdasan dan masa depanmu"';
-      _isLoading = false; // Data selesai dimuat
-    });
+    // // Data hardcoded sebagai pengganti local storage
+    // setState(() {
+    //   _streakDays = 125;
+    //   _totalFocusedMinutes = (14 * 60) + 10; // 14h 10m
+    //   _level = 3;
+    //   _levelTitle = 'MasterrrMind';
+    //   _currentPoints = 1240;
+    //   _pointsForNextLevel = 2500;
+    //   _quoteOfTheDay = '"Rasa lelah dan bosan yang kamu lawan saat ini hanyalah sementara, namun pemahaman yang kamu raih akan menjadi fondasi permanen yang membangun kecerdasan dan masa depanmu"';
+    //   _isLoading = false; // Data selesai dimuat
+    // });
+
+    final storageService = Get.find<LocalStorageService>();
+    
+    // Panggil metode getStats() yang sudah ada di service Anda
+    final stats = await storageService.getStats();
+
+    if (mounted) {
+      setState(() {
+        _streakDays = stats['streakCount'] ?? 0;
+        _totalFocusedSeconds = stats['weeklyFocusSec'] ?? 0;
+        _isLoading = false; // Data selesai dimuat
+      });
+    }
   }
   
   // Helper untuk memformat menit menjadi "Xh Ym"
@@ -103,7 +118,7 @@ class _StatsPageState extends State<StatsPage> {
                       // Kirim data ke widget kartu
                       Expanded(child: _buildStreakCard(_streakDays)),
                       const SizedBox(width: AppConstants.defaultPadding),
-                      Expanded(child: _buildTotalTimeCard(lightBlue, _totalFocusedMinutes)),
+                      Expanded(child: _buildTotalTimeCard(lightBlue, _totalFocusedSeconds ~/ 60)),
                     ],
                   ),
                   const SizedBox(height: AppConstants.defaultPadding),
