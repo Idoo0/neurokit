@@ -56,6 +56,27 @@ class LocalStorageService {
     };
   }
 
+  // Individual setters for user data
+  Future<void> setUserName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_nameKey, name);
+  }
+
+  Future<void> setUserClass(String userClass) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_classKey, userClass);
+  }
+
+  Future<void> setUserUniversity(String university) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_universityKey, university);
+  }
+
+  Future<void> setUserMajor(String major) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_majorKey, major);
+  }
+
   // ===========================
   // Session: Mode
   // ===========================
@@ -244,6 +265,11 @@ class LocalStorageService {
     await prefs.remove(_studyDoneKey);
   }
 
+  /// Clear ALL data including user profile and session data
+  Future<void> clearAllData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
   // ---- helpers ----
   int _toYmd(DateTime dt) => dt.year * 10000 + dt.month * 100 + dt.day;
 
@@ -253,5 +279,6 @@ class LocalStorageService {
     final monday = DateTime(local.year, local.month, local.day)
         .subtract(Duration(days: daysFromMonday));
     return _toYmd(monday);
+
   }
 }

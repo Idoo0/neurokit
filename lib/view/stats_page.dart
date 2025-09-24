@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 // Make sure your utils.dart file path is correct
 import 'package:get/get.dart';
 import '../utils.dart';
+
+import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
 
 class StatsPage extends StatefulWidget {
@@ -94,7 +97,7 @@ class _StatsPageState extends State<StatsPage> {
             padding: const EdgeInsets.only(right: AppConstants.defaultPadding),
             child: IconButton(
               icon: const Icon(Icons.menu, color: neutral900, size: 28),
-              onPressed: () { /* TODO */ },
+              onPressed: () => Get.toNamed(RoutesName.settings),
               style: IconButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: AppConstants.defaultBorderRadius,
