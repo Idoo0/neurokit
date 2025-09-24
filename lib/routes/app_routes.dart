@@ -7,7 +7,7 @@ import '../view/warmup_page.dart';                 // ensure this matches the ac
 import '../view/motivation_page.dart';
 import '../view/study_session_result_page.dart';
 import '../view/badges_page.dart';
-// import '../view/settings_page.dart';
+import '../view/settings_page.dart';
 import 'routes_name.dart';
 import '../view/onboarding_flow.dart';
 
@@ -52,11 +52,11 @@ class AppRoutes {
       ),
       transition: Transition.fade,
     ),
-    // GetPage(
-    //   name: RoutesName.settings,
-    //   page: () => const SettingsPage(),
-    //   transition: Transition.fade,
-    // ),
+    GetPage(
+      name: RoutesName.settings,
+      page: () => const SettingsPage(),
+      transition: Transition.fade,
+    ),
     GetPage(
       name: RoutesName.onboardingFlow,
       page: () => const OnboardingFlowScreen(),
