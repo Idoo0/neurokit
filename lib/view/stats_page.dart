@@ -137,7 +137,7 @@ class _StatsPageState extends State<StatsPage> {
                       // Kirim data ke widget kartu
                       Expanded(child: _buildStreakCard(_streakDays)),
                       const SizedBox(width: AppConstants.defaultPadding),
-                      Expanded(child: _buildTotalTimeCard(lightBlue, _totalFocusedSeconds ~/ 60)),
+                      Expanded(child: _buildTotalTimeCard(lightBlue, _totalFocusedSeconds)),
                     ],
                   ),
                   const SizedBox(height: AppConstants.defaultPadding),
