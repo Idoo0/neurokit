@@ -71,23 +71,18 @@ class _StudySessionPageState extends State<StudySessionPage> {
   }
 
   void _endSession({required bool userStopped}) async {
+    _ticker?.cancel();
+
     final store = Get.find<LocalStorageService>();
-    final summary = await store.getStudySummary();
-    final startedAt = summary['startedAt'] as DateTime?;
-    final fallbackElapsed = _totalDuration.inSeconds - _remaining.inSeconds;
-    final seconds = startedAt == null
-        ? (fallbackElapsed < 0 ? 0 : fallbackElapsed)
-        : DateTime.now().difference(startedAt).inSeconds;
+    final seconds = _totalDuration.inSeconds - _remaining.inSeconds;
 
-    await store.markStudyCompleted(durationSeconds: seconds);
+    // persist stats
+    await store.finalizeStudy(durationSeconds: seconds);
 
+    // then go to motivation (end flow)
     Get.offNamed(
       RoutesName.motivation,
-      arguments: {
-        'isStarting': false,
-        // use your route defaults or a short wrap-up message
-        // 'messages': const ['Great work today!'],
-      },
+      arguments: {'isStarting': false},
     );
   }
 

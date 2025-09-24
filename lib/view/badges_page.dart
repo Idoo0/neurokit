@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../utils.dart';
+import 'package:get/get.dart';
+import '../services/local_storage_service.dart';
 
 // Kelas data untuk informasi lencana
 class BadgeInfo {
@@ -18,25 +20,41 @@ class BadgeInfo {
   });
 }
 
-class BadgesPage extends StatelessWidget {
-  // Callback untuk menangani tombol kembali
+class BadgesPage extends StatefulWidget { // <-- Diubah menjadi StatefulWidget
   final VoidCallback onBackPressed;
-
   const BadgesPage({super.key, required this.onBackPressed});
 
   @override
-  Widget build(BuildContext context) {
-    // --- LANGKAH 1: SIMULASI SKOR STREAK ---
-    // Ganti nilai ini untuk menguji lencana yang berbeda.
-    // Nantinya, nilai ini akan diambil dari local storage.
-    final int currentStreak = 364; 
+  State<BadgesPage> createState() => _BadgesPageState();
+}
 
-    // Warna kustom
+class _BadgesPageState extends State<BadgesPage> {
+  int _currentStreak = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStreakData();
+  }
+
+  Future<void> _loadStreakData() async {
+    final storageService = Get.find<LocalStorageService>();
+    final stats = await storageService.getStats();
+    if (mounted) {
+      setState(() {
+        _currentStreak = stats['streakCount'] ?? 0;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ... (Definisi warna dan allBadgesData tidak berubah)
     const Color badgeBlue = Color(0xFF1A5CBA);
     const Color badgeYellow = Color(0xFFFFD702);
 
-    // --- LANGKAH 2: DEFINISIKAN SEMUA LENCANA DAN SYARATNYA ---
-    // Daftar ini berisi semua kemungkinan lencana dan skor yang dibutuhkan untuk membukanya.
     final List<Map<String, dynamic>> allBadgesData = [
       {'level': 'Level 1', 'title': 'Spark Seeker', 'requiredStreak': 1, 'color': badgeBlue},
       {'level': 'Level 2', 'title': 'Memory Scout', 'requiredStreak': 7, 'color': badgeYellow},
@@ -48,24 +66,21 @@ class BadgesPage extends StatelessWidget {
       {'level': 'Level 8', 'title': 'Mind Guardian', 'requiredStreak': 365, 'color': badgeYellow},
     ];
 
-    // --- LANGKAH 3: BUAT DAFTAR LENCANA SECARA DINAMIS ---
-    // Kita menggunakan .map() untuk mengubah allBadgesData menjadi List<BadgeInfo>
-    // sambil memeriksa apakah lencana sudah terbuka atau belum.
+    // Logika ini sekarang menggunakan _currentStreak dari state
     final List<BadgeInfo> badges = allBadgesData.map((badgeData) {
-      final bool isUnlocked = currentStreak >= badgeData['requiredStreak'];
+      final bool isUnlocked = _currentStreak >= badgeData['requiredStreak'];
       return BadgeInfo(
         level: badgeData['level'],
         title: badgeData['title'],
         isUnlocked: isUnlocked,
-        // Jika terbuka, gunakan warna aslinya. Jika tidak, gunakan abu-abu.
         color: isUnlocked ? badgeData['color'] : Colors.grey,
       );
     }).toList();
 
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        // ... (UI AppBar tidak berubah)
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -76,30 +91,33 @@ class BadgesPage extends StatelessWidget {
             backgroundColor: brand800,
             child: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: onBackPressed,
+              onPressed: widget.onBackPressed,
             ),
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 20,
-            mainAxisSpacing: 24,
-          ),
-          itemCount: badges.length,
-          itemBuilder: (context, index) {
-            return _buildBadgeItem(badges[index]);
-          },
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(AppConstants.defaultPadding),
+              child: GridView.builder(
+                // ... (UI GridView tidak berubah)
+                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 24,
+                  ),
+                  itemCount: badges.length,
+                  itemBuilder: (context, index) {
+                    return _buildBadgeItem(badges[index]);
+                  },
+              ),
+            ),
     );
   }
 
   Widget _buildBadgeItem(BadgeInfo badge) {
-    // Logika di sini tidak perlu diubah, karena sudah membaca status 'isUnlocked'
+    // ... (UI _buildBadgeItem tidak berubah)
     final Color badgeColor = badge.isUnlocked ? badge.color : neutral200;
     final Color textColor = badge.isUnlocked ? Colors.white : neutral400;
 
@@ -164,7 +182,8 @@ class BadgesPage extends StatelessWidget {
   }
 }
 
-// Kalkulasi Heksagon yang Proporsional
+
+// ... (HexagonClipper tidak berubah)
 class HexagonClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

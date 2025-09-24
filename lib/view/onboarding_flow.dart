@@ -22,7 +22,7 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
   final TextEditingController _universityController = TextEditingController();
   final TextEditingController _majorController = TextEditingController();
   String? _selectedClass;
-  final List<String> _classOptions = ['7', '8', '9'];
+  final List<String> _classOptions = ['10', '11', '12'];
 
   // This function is called when a page is changed
   void _onPageChanged(int index) {
@@ -140,7 +140,9 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
           child: const Text('Get Started'),
         ),
         TextButton(
-          onPressed: () { /* Handle skip */ },
+          onPressed: () {
+            Navigator.pushNamed(context, '/homepage');
+          },
           child: const Text('Skip', style: TextStyle(color: Colors.grey)),
         ),
         const SizedBox(height: 40),
