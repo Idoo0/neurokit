@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 // Make sure your utils.dart file path is correct
-import 'package:get/get.dart';
 import '../utils.dart';
 
 import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
+import '../utils/gamification_util.dart';
 
 class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
@@ -19,10 +19,11 @@ class _StatsPageState extends State<StatsPage> {
   bool _isLoading = true;
   int _streakDays = 0;
   int _totalFocusedSeconds = 0;
-  int _currentPoints = 0;
-  int _pointsForNextLevel = 10000;
-  int _level = 0;
-  String _levelTitle = '';
+  LevelInfo? _levelInfo;
+  // int _currentPoints = 0;
+  // int _pointsForNextLevel = 10000;
+  // int _level = 0;
+  // String _levelTitle = '';
   String _quoteOfTheDay = 'Belajar adalah investasi terbaik untuk masa depan.';
 
   @override
@@ -54,27 +55,42 @@ class _StatsPageState extends State<StatsPage> {
     
     // Panggil metode getStats() yang sudah ada di service Anda
     final stats = await storageService.getStats();
+    final totalPoints = await storageService.getTotalPoints();
 
     if (mounted) {
       setState(() {
         _streakDays = stats['streakCount'] ?? 0;
         _totalFocusedSeconds = stats['weeklyFocusSec'] ?? 0;
+
+        _levelInfo = calculateLevelInfo(totalPoints);
+
         _isLoading = false; // Data selesai dimuat
       });
     }
   }
   
   // Helper untuk memformat menit menjadi "Xh Ym"
-  String _formatMinutes(int minutes) {
-    if (minutes < 0) return "0m";
-    int hours = minutes ~/ 60;
-    int remainingMinutes = minutes % 60;
+  // String _formatMinutes(int minutes) {
+  //   if (minutes < 0) return "0m";
+  //   int hours = minutes ~/ 60;
+  //   int remainingMinutes = minutes % 60;
+  //   if (hours > 0) {
+  //     return '${hours}h ${remainingMinutes}m';
+  //   } else {
+  //     return '${remainingMinutes}m';
+  //   }
+  // }
+
+  String _formatSeconds(int totalSeconds) {
+    if (totalSeconds < 0) return "0m";
+    int hours = totalSeconds ~/ 3600;
+    int minutes = (totalSeconds % 3600) ~/ 60;
     if (hours > 0) {
-      return '${hours}h ${remainingMinutes}m';
+      return '${hours}h ${minutes}m';
     } else {
-      return '${remainingMinutes}m';
+      return '${minutes}m';
     }
-  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +126,7 @@ class _StatsPageState extends State<StatsPage> {
         ],
       ),
       // --- LANGKAH 3: TAMPILKAN LOADING ATAU KONTEN ---
-      body: _isLoading
+      body: _isLoading || _levelInfo == null
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(AppConstants.defaultPadding),
@@ -125,7 +141,7 @@ class _StatsPageState extends State<StatsPage> {
                     ],
                   ),
                   const SizedBox(height: AppConstants.defaultPadding),
-                  _buildLevelCard(brightYellow, _level, _levelTitle, _currentPoints, _pointsForNextLevel),
+                  _buildLevelCard(brightYellow, _levelInfo!),
                   const SizedBox(height: AppConstants.defaultPadding),
                   _buildQuoteCard(darkBlue, _quoteOfTheDay),
                 ],
@@ -175,7 +191,7 @@ class _StatsPageState extends State<StatsPage> {
     );
   }
 
-  Widget _buildTotalTimeCard(Color color, int totalMinutes) {
+  Widget _buildTotalTimeCard(Color color, int totalSeconds) {
     return Container(
       height: 160,
       padding: const EdgeInsets.all(AppConstants.defaultPadding),
@@ -186,7 +202,7 @@ class _StatsPageState extends State<StatsPage> {
           Text('Total Focused Time', style: bodyText14.copyWith(color: neutral600)),
           const Spacer(),
           Text(
-            _formatMinutes(totalMinutes), // Gunakan data yang diformat
+            _formatSeconds(totalSeconds), // Gunakan data yang diformat
             style: mobileH2.copyWith(color: neutral900),
           ),
           const SizedBox(height: 4),
@@ -196,7 +212,7 @@ class _StatsPageState extends State<StatsPage> {
     );
   }
 
-  Widget _buildLevelCard(Color color, int level, String title, int currentPoints, int maxPoints) {
+  Widget _buildLevelCard(Color color, LevelInfo info) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.defaultPadding),
       decoration: BoxDecoration(color: color, borderRadius: AppConstants.defaultBorderRadius),
@@ -205,9 +221,9 @@ class _StatsPageState extends State<StatsPage> {
         children: [
           Row(
             children: [
-              Text('Level $level', style: bodyText14.copyWith(color: neutral900, fontWeight: FontWeight.w600)),
+              Text('Level ${info.level}', style: bodyText14.copyWith(color: neutral900, fontWeight: FontWeight.w600)),
               const SizedBox(width: 8),
-              Text(title, style: mobileH2.copyWith(color: neutral900)),
+              Text(info.title, style: mobileH2.copyWith(color: neutral900)),
             ],
           ),
           const SizedBox(height: 12),
@@ -219,7 +235,7 @@ class _StatsPageState extends State<StatsPage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
-                    value: (maxPoints > 0) ? currentPoints / maxPoints : 0, // Hitung progress
+                    value: info.progress, // Use the calculated progress
                     backgroundColor: Colors.white54,
                     valueColor: const AlwaysStoppedAnimation<Color>(neutral900),
                     minHeight: 10,
@@ -227,7 +243,7 @@ class _StatsPageState extends State<StatsPage> {
                 ),
               ),
               const SizedBox(width: 12),
-              Text('$currentPoints/$maxPoints', style: bodyText14.copyWith(color: neutral900, fontWeight: FontWeight.bold)),
+              Text('${info.currentPoints}/${info.pointsForNextLevel}', style: bodyText14.copyWith(color: neutral900, fontWeight: FontWeight.bold)),
             ],
           )
         ],

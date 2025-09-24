@@ -30,6 +30,8 @@ class LocalStorageService {
 
   static const String _sessionHistoryKey   = 'stats_session_history';    // List<String> JSON
 
+  static const String _totalPointsKey    = 'stats_total_points';       // int (for gamification)
+
   // ===========================
   // Onboarding
   // ===========================
@@ -146,6 +148,10 @@ class LocalStorageService {
     int warmupTotal = 0,
     String? modeName,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentPoints = await getTotalPoints();
+    await prefs.setInt(_totalPointsKey, currentPoints + durationSeconds);
+
     await markStudyCompleted(durationSeconds: durationSeconds);
     await addFocusedSecondsThisWeek(durationSeconds);
     await updateStreakOnSessionComplete();
@@ -269,16 +275,20 @@ class LocalStorageService {
   Future<void> clearAllData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-
-  // ---- helpers ----
+  }
+  
   int _toYmd(DateTime dt) => dt.year * 10000 + dt.month * 100 + dt.day;
-
+  
   int _weekStartYmd(DateTime dt) {
     final local = dt;
     final int daysFromMonday = local.weekday - DateTime.monday;
     final monday = DateTime(local.year, local.month, local.day)
         .subtract(Duration(days: daysFromMonday));
     return _toYmd(monday);
+  }
 
+  Future<int> getTotalPoints() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_totalPointsKey) ?? 0;
   }
 }
