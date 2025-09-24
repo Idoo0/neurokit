@@ -3,12 +3,11 @@ import 'package:get/get.dart';
 
 import '../components/bottom_navbar.dart';
 import '../components/mode_picker_sheet.dart' show showModePicker;
+import '../widgets/api_debug_widget.dart';
 
 import '../controllers/bluetooth_controller.dart';
 import '../controllers/session_controller.dart';
 
-import '../models/mode.dart';
-import '../models/session_state.dart'; // <-- pakai enum SessionPhase
 import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
 import '../utils.dart';
@@ -55,6 +54,14 @@ class _HomepagePageState extends State<HomepagePage> {
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
       ),
+      // Debug API button - only show in debug mode
+      floatingActionButton: const bool.fromEnvironment('dart.vm.product') 
+          ? null 
+          : FloatingActionButton.small(
+              onPressed: () => showApiDebugDialog(context),
+              backgroundColor: Colors.orange,
+              child: const Icon(Icons.bug_report, size: 20),
+            ),
     );
   }
 }
