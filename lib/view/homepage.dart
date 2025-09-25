@@ -26,15 +26,29 @@ class HomepagePage extends StatefulWidget {
 class _HomepagePageState extends State<HomepagePage> {
   int _selectedIndex = 1;
 
+  // Key untuk akses HomeTab state
+  final GlobalKey<_HomeTabState> _homeTabKey = GlobalKey<_HomeTabState>();
+
   // Ambil controller dari GetX (pastikan sudah di-Get.put di bootstrap)
   final BluetoothController bt = Get.find<BluetoothController>();
   final SessionController session = Get.find<SessionController>();
 
-  void _onItemTapped(int i) => setState(() => _selectedIndex = i);
+  void _onItemTapped(int i) {
+    setState(() => _selectedIndex = i);
+
+    // Refresh nama ketika kembali ke tab Home
+    if (i == 1) {
+      // Post frame callback untuk memastikan widget sudah di-mount
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _homeTabKey.currentState?.refreshName();
+      });
+    }
+  }
 
   late final List<Widget> _pages = <Widget>[
     BadgesPage(onBackPressed: () => _onItemTapped(1)),
     HomeTab(
+      key: _homeTabKey, // Tambahkan key
       starAsset: 'assets/images/star-sleep.png',
       bt: bt,
       session: session,
@@ -86,13 +100,13 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
-  String? _userName; // cached first name (or null if none saved)
+  // Key yang unik untuk memaksa rebuild FutureBuilder
+  Key _nameWidgetKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadUserName();
   }
 
   @override
@@ -105,6 +119,19 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       widget.bt.onAppResumed();
+      // Force rebuild nama widget saat app kembali ke foreground
+      setState(() {
+        _nameWidgetKey = UniqueKey();
+      });
+    }
+  }
+
+  // Method untuk refresh nama dari luar jika diperlukan
+  void refreshName() {
+    if (mounted) {
+      setState(() {
+        _nameWidgetKey = UniqueKey();
+      });
     }
   }
 
@@ -123,19 +150,6 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
 
     // navigate to Motivation
     Get.toNamed(RoutesName.motivation, arguments: {'isStarting': true});
-  }
-
-  Future<void> _loadUserName() async {
-    try {
-      final store = Get.find<LocalStorageService>();
-      final data = await store.getUserData();
-      final raw = (data['name'] ?? '').trim();
-      // Use only the first word (e.g., first name) for a more personal tone
-      final firstName = raw.isEmpty ? null : raw.split(' ').first;
-      if (mounted) setState(() => _userName = firstName);
-    } catch (_) {
-      // Silently ignore; fallback UI will use default text
-    }
   }
 
   @override
@@ -161,10 +175,21 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
                   style: mobileH2,
                 ),
               ),
-              Text(
-                'Ayo Nyalain${_userName == null ? '' : ', ${_userName!}'} !',
-                textAlign: TextAlign.center,
-                style: mobileH1,
+              // Sama seperti motivation_page, ambil nama fresh setiap render
+              // Ini akan otomatis update ketika user kembali dari Settings
+              FutureBuilder<Map<String, String>>(
+                key: _nameWidgetKey, // Force rebuild dengan key baru
+                future: Get.find<LocalStorageService>().getUserData(),
+                builder: (context, snapshot) {
+                  final raw = (snapshot.data?['name'] ?? '').trim();
+                  final firstName = raw.isEmpty ? '' : raw.split(' ').first;
+                  final suffix = firstName.isEmpty ? '' : ', $firstName';
+                  return Text(
+                    'Ayo Nyalain$suffix!',
+                    textAlign: TextAlign.center,
+                    style: mobileH1,
+                  );
+                },
               ),
 
               const SizedBox(height: 4),
