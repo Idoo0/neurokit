@@ -55,8 +55,8 @@ class _HomepagePageState extends State<HomepagePage> {
         onItemTapped: _onItemTapped,
       ),
       // Debug API button - only show in debug mode
-      floatingActionButton: const bool.fromEnvironment('dart.vm.product') 
-          ? null 
+      floatingActionButton: const bool.fromEnvironment('dart.vm.product')
+          ? null
           : FloatingActionButton.small(
               onPressed: () => showApiDebugDialog(context),
               backgroundColor: Colors.orange,
@@ -86,10 +86,13 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
+  String? _userName; // cached first name (or null if none saved)
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadUserName();
   }
 
   @override
@@ -119,10 +122,20 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     if (!mounted) return;
 
     // navigate to Motivation
-    Get.toNamed(
-      RoutesName.motivation,
-      arguments: {'isStarting': true},
-    );
+    Get.toNamed(RoutesName.motivation, arguments: {'isStarting': true});
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final store = Get.find<LocalStorageService>();
+      final data = await store.getUserData();
+      final raw = (data['name'] ?? '').trim();
+      // Use only the first word (e.g., first name) for a more personal tone
+      final firstName = raw.isEmpty ? null : raw.split(' ').first;
+      if (mounted) setState(() => _userName = firstName);
+    } catch (_) {
+      // Silently ignore; fallback UI will use default text
+    }
   }
 
   @override
@@ -149,12 +162,12 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
                 ),
               ),
               Text(
-                'Ayo Nyalain, Josha !',
+                'Ayo Nyalain${_userName == null ? '' : ', ${_userName!}'} !',
                 textAlign: TextAlign.center,
                 style: mobileH1,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 4),
 
               // ---------- Star button ----------
               InkWell(
