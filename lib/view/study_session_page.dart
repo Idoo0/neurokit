@@ -1,3 +1,4 @@
+// study_session_page.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -117,6 +118,30 @@ class _StudySessionPageState extends State<StudySessionPage> {
 
   // ---- UI Widgets ----
 
+  /// ⭐️ Displays a confirmation dialog before stopping the session.
+  Future<bool?> _showStopConfirmationDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Hentikan Sesi?'),
+          content: const Text('Apakah kamu yakin ingin mengakhiri sesi ini lebih awal?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false), // Returns false
+              child: Text('Tidak', style: TextStyle(color: neutral700)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true), // Returns true
+              child: Text('Ya, Hentikan', style: TextStyle(color: brand600, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildButton(
       {required String text,
         required VoidCallback onPressed,
@@ -200,7 +225,13 @@ class _StudySessionPageState extends State<StudySessionPage> {
         const SizedBox(height: 12),
         _buildButton(
           text: "Hentikan Sesi",
-          onPressed: () => _endSession(userStopped: true),
+          onPressed: () async {
+            // ⭐️ Show confirmation dialog
+            final shouldStop = await _showStopConfirmationDialog();
+            if (shouldStop == true && mounted) {
+              _endSession(userStopped: true);
+            }
+          },
           isPrimary: false,
         ),
       ],
@@ -232,7 +263,13 @@ class _StudySessionPageState extends State<StudySessionPage> {
         const SizedBox(height: 12),
         _buildButton(
           text: "Hentikan Sesi",
-          onPressed: () => _endSession(userStopped: true),
+          onPressed: () async {
+            // ⭐️ Show confirmation dialog
+            final shouldStop = await _showStopConfirmationDialog();
+            if (shouldStop == true && mounted) {
+              _endSession(userStopped: true);
+            }
+          },
           isPrimary: false,
         ),
       ],
