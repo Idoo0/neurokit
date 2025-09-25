@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import '../view/homepage.dart';
 import '../view/stats_page.dart';
 import '../view/study_session_page.dart';
-import '../view/warmup_page.dart';                 // ensure this matches the actual filename
+import '../view/warmup_page.dart'; // ensure this matches the actual filename
 import '../view/motivation_page.dart';
 import '../view/study_session_result_page.dart';
 import '../view/badges_page.dart';
@@ -12,7 +12,7 @@ import 'routes_name.dart';
 import '../view/onboarding_flow.dart';
 
 class AppRoutes {
-  static const initRoute = RoutesName.motivation;
+  static const initRoute = RoutesName.onboardingFlow;
 
   static final routes = [
     GetPage(
@@ -37,7 +37,7 @@ class AppRoutes {
     ),
     GetPage(
       name: RoutesName.motivation,
-      page: () => const MotivationPage(),  // no arg parsing here
+      page: () => const MotivationPage(), // no arg parsing here
       transition: Transition.fade,
     ),
     GetPage(
@@ -47,9 +47,7 @@ class AppRoutes {
     ),
     GetPage(
       name: RoutesName.badges,
-      page: () => BadgesPage(
-        onBackPressed: () => Get.back(),
-      ),
+      page: () => BadgesPage(onBackPressed: () => Get.back()),
       transition: Transition.fade,
     ),
     GetPage(
