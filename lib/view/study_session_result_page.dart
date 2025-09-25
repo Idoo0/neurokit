@@ -13,25 +13,36 @@ class StudySessionResultPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = Get.find<LocalStorageService>();
 
-    return FutureBuilder(
+    return FutureBuilder<List<Object?>>(
       future: Future.wait([
-        store.getWarmupSummary(),      // {'score': int, 'total': int, 'done': bool}
-        store.getStudySummary(),       // {'startedAt': DateTime?, 'durationSec': int, 'done': bool}
-        store.getSelectedModeString(), // String? (SessionMode.name)
-        store.getStats(),              // {'weeklyFocusSec': int, 'weekStartYmd': int, 'streakCount': int, 'lastYmd': int}
+        store.getWarmupSummary(),       // 0: {'score','total','done'}
+        store.getStudySummary(),        // 1: {'startedAt','durationSec','done'}
+        store.getSelectedModeString(),  // 2: String? (SessionMode.name)
+        store.getStats(),               // 3: {'weeklyFocusSec','weekStartYmd','streakCount','lastYmd'}
+        store.getLifetimeWarmup(),      // 4: {'score','total'}
       ]),
       builder: (context, snap) {
-        if (!snap.hasData) {
+        if (snap.connectionState != ConnectionState.done) {
           return const Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(child: Center(child: CircularProgressIndicator())),
           );
         }
+        if (!snap.hasData || snap.data == null) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: SafeArea(child: Center(child: Text('No data'))),
+          );
+        }
 
-        final warmup = snap.data![0] as Map<String, Object>;
-        final study  = snap.data![1] as Map<String, Object?>;
-        final modeStr = snap.data![2] as String?;
-        final stats  = snap.data![3] as Map<String, int>;
+        final data = snap.data!;
+        final warmup   = data[0] as Map<String, Object>;
+        final study    = data[1] as Map<String, Object?>;
+        final modeStr  = data[2] as String?;
+        final stats    = data[3] as Map<String, int>;
+        final lifetime = data[4] as Map<String, int>;
+        final lifeScore = lifetime['score'] ?? 0;
+        final lifeTotal = lifetime['total'] ?? 0;
 
         SessionMode? mode;
         if (modeStr != null) {
@@ -68,7 +79,6 @@ class StudySessionResultPage extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(),
                   Text(
@@ -76,49 +86,47 @@ class StudySessionResultPage extends StatelessWidget {
                     style: mobileH2.copyWith(color: neutral800),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
                   Image.asset(
                     "assets/images/star-spark-confetti.png",
-                    height: 400,
+                    height: 250, // Adjusted height to prevent overflow
                   ),
-                  const SizedBox(height: 40),
-
-                  // 🔹 Dynamic summary
-                  Column(
+                  const SizedBox(height: 20),
+                  GridView(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisExtent: 95,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     children: [
+                      _StatBox(
+                        title: 'Warmup Poin',
+                        value: '$score poin',
+                        subtitle: 'Total: $lifeScore poin',
+                        accentColor: const Color(0xFFFCD34D),
+                      ),
+                      _StatBox(
+                        title: 'Durasi Belajar',
+                        value: durationText,
+                        subtitle: 'Minggu ini: $weeklyText',
+                        accentColor: const Color(0xFF86EFAC),
+                      ),
+                      _StatBox(
+                        title: '🔥 Streak',
+                        value: '$streakCount hari',
+                        accentColor: const Color(0xFFFDBA74),
+                      ),
                       if (mode != null)
-                        Text(
-                          "Mode: ${mode == SessionMode.chill ? 'CHILL' : 'LEARN'}",
-                          style: bodyText16.copyWith(color: neutral700),
-                          textAlign: TextAlign.center,
+                        _StatBox(
+                          title: 'Mode',
+                          value: mode == SessionMode.chill ? 'CHILL' : 'LEARN',
+                          accentColor: const Color(0xFFB9C2FD),
                         ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Warmup: $score / $total poin",
-                        style: bodyText18.copyWith(color: neutral700),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Durasi belajar: $durationText",
-                        style: bodyText18.copyWith(color: neutral700),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Total fokus minggu ini: $weeklyText",
-                        style: bodyText18.copyWith(color: neutral700),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "🔥 Streak: $streakCount hari",
-                        style: bodyText18.copyWith(color: neutral700),
-                        textAlign: TextAlign.center,
-                      ),
                     ],
                   ),
-
                   const Spacer(),
                   SizedBox(
                     width: double.infinity,
@@ -140,6 +148,67 @@ class StudySessionResultPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// A helper widget to display a single statistic in a styled box,
+/// now with an optional subtitle.
+class _StatBox extends StatelessWidget {
+  const _StatBox({
+    required this.title,
+    required this.value,
+    this.subtitle,
+    this.accentColor,
+  });
+
+  final String title;
+  final String value;
+  final String? subtitle;
+  final Color? accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = accentColor ?? brand600;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: bodyText12.copyWith(color: neutral700, fontWeight: FontWeight.w600),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: bodyText16.copyWith(color: neutral900, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: bodyText12.copyWith(color: neutral600),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

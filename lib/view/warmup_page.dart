@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart'; // <-- 1. Import the package
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:get/get.dart';
 import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
@@ -37,7 +37,7 @@ extension WarmupModeX on WarmupMode {
 class _WarmUpPageState extends State<WarmUpPage> {
   final _rng = Random();
   final TextEditingController _controller = TextEditingController();
-  final FlutterTts _flutterTts = FlutterTts(); // <-- 2. Create a TTS instance
+  final FlutterTts _flutterTts = FlutterTts();
 
   WarmupMode? _mode;
   late List<List<int>> _questions;
@@ -54,16 +54,15 @@ class _WarmUpPageState extends State<WarmUpPage> {
   @override
   void initState() {
     super.initState();
-    _initTts(); // <-- 3. Initialize TTS when the page loads
+    _initTts();
   }
 
   Future<void> _initTts() async {
-    await _flutterTts.setLanguage("id-ID"); // Set language to Indonesian
-    await _flutterTts.setSpeechRate(0.5);   // Adjust speech speed if needed
-    await _flutterTts.setPitch(1.0);        // Adjust pitch if needed
+    await _flutterTts.setLanguage("id-ID");
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setPitch(1.0);
   }
 
-  // <-- 4. Create a function to speak the digit in Indonesian
   Future<void> _speakDigit(int digit) async {
     const Map<int, String> indonesianWords = {
       0: "nol", 1: "satu", 2: "dua", 3: "tiga", 4: "empat",
@@ -71,12 +70,12 @@ class _WarmUpPageState extends State<WarmUpPage> {
     };
     final wordToSpeak = indonesianWords[digit] ?? '';
     if (wordToSpeak.isNotEmpty) {
-      print("Attempting to speak: $wordToSpeak"); // <-- ADD THIS LINE
+      print("Attempting to speak: $wordToSpeak");
       await _flutterTts.speak(wordToSpeak);
     }
   }
 
-  Duration _nextDigitDuration() => const Duration(milliseconds: 750); // Fixed duration
+  Duration _nextDigitDuration() => const Duration(milliseconds: 750);
 
   List<List<int>> _generateQuestions(WarmupMode mode) {
     final (minLen, maxLen) = mode.spanRange;
@@ -111,7 +110,7 @@ class _WarmUpPageState extends State<WarmUpPage> {
   void dispose() {
     _questionTimer?.cancel();
     _controller.dispose();
-    _flutterTts.stop(); // <-- 5. Stop TTS when the page is closed
+    _flutterTts.stop();
     super.dispose();
   }
 
@@ -137,7 +136,7 @@ class _WarmUpPageState extends State<WarmUpPage> {
     for (final d in _currentDigits) {
       if (!mounted) return;
       setState(() => _visibleDigit = d.toString());
-      _speakDigit(d); // <-- 6. Speak the digit as it appears
+      _speakDigit(d);
       await Future.delayed(_nextDigitDuration());
     }
 
@@ -190,17 +189,14 @@ class _WarmUpPageState extends State<WarmUpPage> {
   Future<void> _nextQuestionOrFinish() async {
     _questionTimer?.cancel();
 
-    // If this was the last question, do NOT increment _qIndex.
     final lastIndex = _questions.length - 1;
     final isLast = _qIndex >= lastIndex;
 
     if (isLast) {
-      // ⬇️ Persist warmup summary and stamp study start time
       final store = Get.find<LocalStorageService>();
       await store.setWarmupResult(score: _totalScore, totalQuestions: _questions.length);
       await store.markStudyStartedNow();
 
-      // Navigate after the current frame to avoid build re-entrancy.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Get.offNamed(RoutesName.studySession);
@@ -208,9 +204,32 @@ class _WarmUpPageState extends State<WarmUpPage> {
       return;
     }
 
-    // Otherwise go to the next question.
     setState(() => _qIndex++);
     _startShowSequence();
+  }
+
+  /// ⭐️ Displays a confirmation dialog before canceling the warmup.
+  Future<bool?> _showCancelConfirmationDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Batalkan Warmup?'),
+          content: const Text('Progres tidak akan disimpan. Yakin ingin kembali ke menu utama?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Tidak', style: TextStyle(color: neutral700)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text('Ya, Batalkan', style: TextStyle(color: brand600, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -225,11 +244,34 @@ class _WarmUpPageState extends State<WarmUpPage> {
     }
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppConstants.defaultPadding * 1.5),
-            child: content,
-          ),
+        child: Stack(
+          children: [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppConstants.defaultPadding * 1.5),
+                child: content,
+              ),
+            ),
+            if (step == 1 || step == 2)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.close, color: neutral500),
+                  label: Text(
+                    "Batalkan",
+                    style: bodyText14.copyWith(color: neutral500),
+                  ),
+                  onPressed: () async {
+                    // ⭐️ Show confirmation dialog before canceling
+                    final shouldCancel = await _showCancelConfirmationDialog();
+                    if (shouldCancel == true && mounted) {
+                      Get.offAllNamed(RoutesName.homepage);
+                    }
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -266,7 +308,7 @@ class _WarmUpPageState extends State<WarmUpPage> {
   }
 
   Widget _showSequenceView() {
-    final total = _questions.length; // should be 8, but read dynamically
+    final total = _questions.length;
     final shownIndex = (_qIndex + 1).clamp(1, total);
 
     return Column(
@@ -352,7 +394,6 @@ class _WarmUpPageState extends State<WarmUpPage> {
   }
 
   Widget _feedbackView() {
-    // Use a safe index to read the just-answered question
     final lastIndex = (_questions.length - 1).clamp(0, _questions.length == 0 ? 0 : _questions.length - 1);
     final safeIndex = _qIndex.clamp(0, lastIndex);
     final expected = _questions.isEmpty

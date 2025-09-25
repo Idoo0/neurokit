@@ -17,6 +17,9 @@ class LocalStorageService {
   static const String _warmupQuestionsKey = 'session_warmup_questions'; // int
   static const String _warmupDoneKey = 'session_warmup_done';           // bool
 
+  static const String _lifetimeWarmupScoreKey     = 'stats_lifetime_warmup_score';     // int
+  static const String _lifetimeWarmupQuestionsKey = 'stats_lifetime_warmup_questions'; // int
+
   static const String _studyStartedAtKey = 'session_study_started_at';  // int (ms since epoch)
   static const String _studyDurationSecKey = 'session_study_duration';  // int (seconds)
   static const String _studyDoneKey = 'session_study_done';             // bool
@@ -103,6 +106,9 @@ class LocalStorageService {
     await prefs.setInt(_warmupScoreKey, score);
     await prefs.setInt(_warmupQuestionsKey, totalQuestions);
     await prefs.setBool(_warmupDoneKey, true);
+
+    // NEW: accumulate lifetime totals
+    await _addToLifetimeWarmup(score: score, totalQuestions: totalQuestions);
   }
 
   Future<Map<String, Object>> getWarmupSummary() async {
@@ -111,6 +117,26 @@ class LocalStorageService {
       'score': prefs.getInt(_warmupScoreKey) ?? 0,
       'total': prefs.getInt(_warmupQuestionsKey) ?? 0,
       'done': prefs.getBool(_warmupDoneKey) ?? false,
+    };
+  }
+
+  Future<void> _addToLifetimeWarmup({
+    required int score,
+    required int totalQuestions,
+  }) async {
+    if (score < 0 || totalQuestions < 0) return;
+    final prefs = await SharedPreferences.getInstance();
+    final curScore = prefs.getInt(_lifetimeWarmupScoreKey) ?? 0;
+    final curTotal = prefs.getInt(_lifetimeWarmupQuestionsKey) ?? 0;
+    await prefs.setInt(_lifetimeWarmupScoreKey, curScore + score);
+    await prefs.setInt(_lifetimeWarmupQuestionsKey, curTotal + totalQuestions);
+  }
+
+  Future<Map<String, int>> getLifetimeWarmup() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'score': prefs.getInt(_lifetimeWarmupScoreKey) ?? 0,
+      'total': prefs.getInt(_lifetimeWarmupQuestionsKey) ?? 0,
     };
   }
 
