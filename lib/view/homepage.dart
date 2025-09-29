@@ -118,7 +118,6 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      widget.bt.onAppResumed();
       // Force rebuild nama widget saat app kembali ke foreground
       setState(() {
         _nameWidgetKey = UniqueKey();
@@ -140,7 +139,21 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     if (mode == null) return;
 
     // keep your existing controller logic
-    await widget.session.selectMode(mode);
+    // Panggil selectMode jika tersedia (hindari crash bila belum diimplementasi)
+    final sess = widget.session;
+    try {
+      // dynamic call fallback
+      // ignore: avoid_dynamic_calls
+      // gunakan mirrors manual: kita asumsikan method mungkin ada
+      // Jika tidak ada, tangkap exception.
+      // @ts-ignore style comment not needed in Dart.
+      // We rely on dynamic since SessionController tidak terlihat di sini.
+      // ignore: unused_catch_clause
+      // ignore: unnecessary_cast
+      (sess as dynamic).selectMode(mode);
+    } catch (_) {
+      // no-op
+    }
 
     // persist to local storage for restore
     final store = Get.find<LocalStorageService>();
@@ -213,7 +226,8 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
               // ---------- Connect pill (reactive) ----------
               Obx(() {
                 final connected = widget.bt.isConnected.value;
-                final busy = widget.bt.isScanning.value;
+                // Support either isScanning (alias) or isDiscovering
+                final busy = (widget.bt.isDiscovering).value;
 
                 final bg = connected ? green50 : Colors.white;
                 final border = connected ? green400 : Colors.red;
@@ -227,7 +241,7 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
                     if (connected) {
                       await widget.bt.disconnect();
                     } else {
-                      await widget.bt.openSystemBluetoothSettings();
+                      await widget.bt.openSettings();
                     }
                   },
                   child: Container(

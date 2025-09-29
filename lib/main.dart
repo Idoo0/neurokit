@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'routes/app_routes.dart';
 
 // === Services & Controllers ===
-import 'services/ble_service.dart'; // stub sekarang, real nanti tinggal uncomment
+import 'services/bt_classic_service.dart'; // classic bluetooth service (BtClassicService)
 import 'services/audio_service.dart'; // stub sekarang, real nanti tinggal uncomment
 import 'services/local_storage_service.dart';
 import 'controllers/bluetooth_controller.dart';
@@ -42,13 +42,16 @@ class _CoreBinding extends Bindings {
   @override
   void dependencies() {
     // Services (permanent agar tetap hidup sepanjang app)
-    Get.put<BleService>(BleService(), permanent: true);
+    Get.put<BtClassicService>(BtClassicService(), permanent: true);
     Get.put<AudioService>(AudioService(), permanent: true);
-    Get.put<LocalStorageService>(LocalStorageService(), permanent: true); // ⬅️ NEW
+    Get.put<LocalStorageService>(
+      LocalStorageService(),
+      permanent: true,
+    ); // ⬅️ NEW
 
     // Controllers yang bergantung pada services di atas
     Get.put<BluetoothController>(
-      BluetoothController(Get.find<BleService>()),
+      BluetoothController(Get.find<BtClassicService>()),
       permanent: true,
     );
     Get.put<MusicController>(
@@ -56,12 +59,8 @@ class _CoreBinding extends Bindings {
       permanent: true,
     );
     Get.put<SessionController>(
-      SessionController(
-        bt: Get.find<BluetoothController>(),
-        music: Get.find<MusicController>(),
-      ),
+      SessionController(bt: Get.find<BluetoothController>()),
       permanent: true,
     );
   }
 }
-
