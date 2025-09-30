@@ -15,11 +15,12 @@ class StudySessionResultPage extends StatelessWidget {
 
     return FutureBuilder<List<Object?>>(
       future: Future.wait([
-        store.getWarmupSummary(),       // 0: {'score','total','done'}
-        store.getStudySummary(),        // 1: {'startedAt','durationSec','done'}
-        store.getSelectedModeString(),  // 2: String? (SessionMode.name)
-        store.getStats(),               // 3: {'weeklyFocusSec','weekStartYmd','streakCount','lastYmd'}
-        store.getLifetimeWarmup(),      // 4: {'score','total'}
+        store.getWarmupSummary(), // 0: {'score','total','done'}
+        store.getStudySummary(), // 1: {'startedAt','durationSec','done'}
+        store.getSelectedModeString(), // 2: String? (SessionMode.name)
+        store
+            .getStats(), // 3: {'weeklyFocusSec','weekStartYmd','streakCount','lastYmd'}
+        store.getLifetimeWarmup(), // 4: {'score','total'}
       ]),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
@@ -36,17 +37,19 @@ class StudySessionResultPage extends StatelessWidget {
         }
 
         final data = snap.data!;
-        final warmup   = data[0] as Map<String, Object>;
-        final study    = data[1] as Map<String, Object?>;
-        final modeStr  = data[2] as String?;
-        final stats    = data[3] as Map<String, int>;
+        final warmup = data[0] as Map<String, Object>;
+        final study = data[1] as Map<String, Object?>;
+        final modeStr = data[2] as String?;
+        final stats = data[3] as Map<String, int>;
         final lifetime = data[4] as Map<String, int>;
         final lifeScore = lifetime['score'] ?? 0;
         final lifeTotal = lifetime['total'] ?? 0;
 
         SessionMode? mode;
         if (modeStr != null) {
-          try { mode = SessionMode.values.firstWhere((e) => e.name == modeStr); } catch (_) {}
+          try {
+            mode = SessionMode.values.firstWhere((e) => e.name == modeStr);
+          } catch (_) {}
         }
 
         final score = (warmup['score'] as int?) ?? 0;
@@ -93,12 +96,13 @@ class StudySessionResultPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   GridView(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisExtent: 95,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisExtent: 95,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
@@ -137,7 +141,8 @@ class StudySessionResultPage extends StatelessWidget {
                         backgroundColor: brand600,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28)),
+                          borderRadius: BorderRadius.circular(28),
+                        ),
                       ),
                       child: Text("Home", style: buttonText),
                     ),
@@ -184,7 +189,10 @@ class _StatBox extends StatelessWidget {
         children: [
           Text(
             title,
-            style: bodyText12.copyWith(color: neutral700, fontWeight: FontWeight.w600),
+            style: bodyText12.copyWith(
+              color: neutral700,
+              fontWeight: FontWeight.w600,
+            ),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -192,7 +200,10 @@ class _StatBox extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: bodyText16.copyWith(color: neutral900, fontWeight: FontWeight.bold),
+            style: bodyText16.copyWith(
+              color: neutral900,
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

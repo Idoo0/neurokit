@@ -41,6 +41,11 @@ dependencies:
   dio: ^5.3.2
   path_provider: ^2.1.1
   audioplayers: ^5.2.1
+  flutter_bluetooth_serial_plus: ^0.5.1
+  permission_handler: ^11.3.1
+  android_intent_plus: ^5.0.2
+  device_info_plus: ^10.1.0
+  # flutter_bluetooth_serial: ^0.4.0
   #flutter_reactive_ble: ^5.2.0
   #just_audio: ^0.9.39
   # audio_session: ^0.1.16

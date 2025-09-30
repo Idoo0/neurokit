@@ -1,24 +1,15 @@
 import 'mode.dart';
 
-enum SessionPhase {
-  idle, // belum apa-apa
-  prepared, // sudah pilih mode & siap mulai
-  running, // sesi berjalan
-  paused, // kalau mau dukung pause
-  completed, // selesai normal
-  error, // ada error
-}
+enum SessionPhase { idle, prepared, running, paused, completed }
 
 class SessionInfo {
   final SessionMode mode;
-  final String trackId; // id/filename/uri lagu
-  final Duration? target; // optional: durasi target fokus
+  final Duration target;
+  final int trackId; // untuk UI info (dfplayer:<no>)
 
-  const SessionInfo({required this.mode, required this.trackId, this.target});
-
-  Map<String, dynamic> toJson() => {
-    'mode': mode.label,
-    'trackId': trackId,
-    'targetSec': target?.inSeconds,
-  };
+  SessionInfo({
+    required this.mode,
+    required this.target,
+    required this.trackId,
+  });
 }

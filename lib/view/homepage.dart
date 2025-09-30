@@ -11,6 +11,7 @@ import '../controllers/session_controller.dart';
 import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
 import '../utils.dart';
+import '../utils/constants.dart' show SessionDefaults;
 
 // Ganti import ini dengan file real kamu
 import 'badges_page.dart';
@@ -100,8 +101,10 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
-  // Key yang unik untuk memaksa rebuild FutureBuilder
+  // Key yang unik untuk memaksa rebuild FutureBuilder (nama & bintang)
   Key _nameWidgetKey = UniqueKey();
+  Key _starWidgetKey = UniqueKey();
+  bool _connecting = false;
 
   @override
   void initState() {
@@ -118,37 +121,94 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      widget.bt.onAppResumed();
-      // Force rebuild nama widget saat app kembali ke foreground
+      // Force rebuild nama & bintang saat balik ke foreground
       setState(() {
         _nameWidgetKey = UniqueKey();
+        _starWidgetKey = UniqueKey();
       });
     }
+  }
+
+  // Helper local untuk bandingkan YMD
+  int _toYmd(DateTime dt) => dt.year * 10000 + dt.month * 100 + dt.day;
+
+  // Cek apakah ada sesi belajar (duration > 0) untuk "hari ini"
+  Future<bool> _hasStudyToday() async {
+    final store = Get.find<LocalStorageService>();
+    final history = await store
+        .getSessionHistory(); // List<Map<String,dynamic>>
+    if (history.isEmpty) return false;
+
+    final todayYmd = _toYmd(DateTime.now());
+    for (final item in history) {
+      final endedAtStr = item['endedAt'] as String?;
+      final dur = (item['durationSec'] ?? 0) as int;
+      if (endedAtStr == null || dur <= 0) continue;
+
+      final dt = DateTime.tryParse(endedAtStr);
+      if (dt == null) continue;
+
+      if (_toYmd(dt) == todayYmd) return true;
+    }
+    return false;
   }
 
   // Method untuk refresh nama dari luar jika diperlukan
   void refreshName() {
-    if (mounted) {
-      setState(() {
-        _nameWidgetKey = UniqueKey();
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _nameWidgetKey = UniqueKey();
+      _starWidgetKey = UniqueKey(); // sekalian refresh ikon bintang
+    });
   }
 
   Future<void> _openModePicker() async {
-    final mode = await showModePicker(context);
-    if (mode == null) return;
+    final picked = await showModePicker(context);
+    if (picked == null) return;
 
-    // keep your existing controller logic
-    await widget.session.selectMode(mode);
-
-    // persist to local storage for restore
+    // Persist pilihan user (punyamu sudah benar)
     final store = Get.find<LocalStorageService>();
-    await store.setSelectedModeString(mode.name);
+    await store.setSelectedModeString(picked.name);
+
+    // Pastikan sudah terhubung ke ESP32
+    if (!widget.bt.isConnected.value) {
+      try {
+        await widget.bt.scanAndConnect();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghubungkan device: $e')),
+        );
+        return;
+      }
+    }
+
+    // Map mode UI -> string command
+    final modeStr = picked.name.toUpperCase().contains('LEARN')
+        ? 'LEARN'
+        : 'CHILL';
+
+    // Compose command PREPARE <MODE> <dur> <vol> <tChill> <tLearn> <tMotiv>
+    final dur = SessionDefaults.durationSec;
+    final vol = SessionDefaults.volumePct;
+    final tChill = SessionDefaults.trackChill;
+    final tLearn = SessionDefaults.trackLearn;
+    final tMotiv = SessionDefaults.motivationTrack;
+
+    // Kirim ke ESP32 (baris diakhiri \n oleh service)
+    await widget.bt.sendLine('$modeStr');
+
+    // (opsional) minta status sekali untuk memastikan sisi ESP32 siap
+    await widget.bt.sendLine('STATUS?');
 
     if (!mounted) return;
 
-    // navigate to Motivation
+    // (opsional) tetap panggil selectMode milik controller-mu, kalau ada
+    try {
+      (widget.session as dynamic).selectMode(picked);
+    } catch (_) {}
+
+    // Lanjut ke Motivation
     Get.toNamed(RoutesName.motivation, arguments: {'isStarting': true});
   }
 
@@ -158,52 +218,84 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
       color: Colors.white,
       alignment: Alignment.topCenter,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 160), // ruang utk navbar
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 160),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ---------- Heading ----------
               const SizedBox(height: 24),
 
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0, bottom: 6.0),
-                child: Text(
-                  'Bintangnya redup',
-                  textAlign: TextAlign.center,
-                  style: mobileH2,
-                ),
-              ),
-              // Sama seperti motivation_page, ambil nama fresh setiap render
-              // Ini akan otomatis update ketika user kembali dari Settings
-              FutureBuilder<Map<String, String>>(
-                key: _nameWidgetKey, // Force rebuild dengan key baru
-                future: Get.find<LocalStorageService>().getUserData(),
-                builder: (context, snapshot) {
-                  final raw = (snapshot.data?['name'] ?? '').trim();
-                  final firstName = raw.isEmpty ? '' : raw.split(' ').first;
-                  final suffix = firstName.isEmpty ? '' : ', $firstName';
-                  return Text(
-                    'Ayo Nyalain$suffix!',
-                    textAlign: TextAlign.center,
-                    style: mobileH1,
+              // === Heading & Nama jadi dinamis berdasar study duration hari ini ===
+              FutureBuilder<bool>(
+                key: _starWidgetKey, // direfresh bareng ikon bintang
+                future: _hasStudyToday(),
+                builder: (context, snapHas) {
+                  final hasToday = snapHas.data ?? false;
+                  final title = hasToday
+                      ? 'Bintangnya menyala'
+                      : 'Bintangnya redup';
+                  final prefix = hasToday ? 'Ayo Fokus Lagi!' : 'Ayo Nyalain';
+
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 6.0),
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: mobileH2,
+                        ),
+                      ),
+
+                      // ---- Nama (tetap ambil storage, tapi kalimatnya ikut prefix) ----
+                      FutureBuilder<Map<String, String>>(
+                        key: _nameWidgetKey,
+                        future: Get.find<LocalStorageService>().getUserData(),
+                        builder: (context, snapshot) {
+                          final raw = (snapshot.data?['name'] ?? '').trim();
+                          final firstName = raw.isEmpty
+                              ? ''
+                              : raw.split(' ').first;
+                          final suffix = firstName.isEmpty
+                              ? ''
+                              : ', $firstName';
+                          return Text(
+                            '$prefix$suffix!',
+                            textAlign: TextAlign.center,
+                            style: mobileH1,
+                          );
+                        },
+                      ),
+                    ],
                   );
                 },
               ),
 
               const SizedBox(height: 4),
 
-              // ---------- Star button ----------
+              // ---- Star button (dinamis berdasar sesi hari ini) ----
               InkWell(
                 borderRadius: BorderRadius.circular(24),
                 onTap: _openModePicker,
                 child: SizedBox(
                   height: 400,
-                  child: Image.asset(
-                    widget.starAsset,
-                    fit: BoxFit.contain,
-                    alignment: Alignment.center,
+                  child: FutureBuilder<bool>(
+                    key: _starWidgetKey,
+                    future: _hasStudyToday(),
+                    builder: (context, snap) {
+                      // default (sementara loading / error) pakai yang lama
+                      final hasToday = snap.data ?? false;
+                      final assetPath = hasToday
+                          ? 'assets/images/star-wink.png'
+                          : 'assets/images/star-sleep.png';
+
+                      return Image.asset(
+                        assetPath,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.center,
+                      );
+                    },
                   ),
                 ),
               ),
@@ -213,21 +305,71 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
               // ---------- Connect pill (reactive) ----------
               Obx(() {
                 final connected = widget.bt.isConnected.value;
-                final busy = widget.bt.isScanning.value;
+
+                // 🔹 “busy” = discover + connecting lokal
+                final busy = widget.bt.isDiscovering.value || _connecting;
 
                 final bg = connected ? green50 : Colors.white;
-                final border = connected ? green400 : Colors.red;
-                final textColor = connected ? green600 : Colors.red;
-                final label = connected ? 'terhubung' : 'hubungkan perangkat';
+                final border = connected
+                    ? green400
+                    : (busy ? Colors.orange : Colors.red);
+                final textColor = connected
+                    ? green600
+                    : (busy ? Colors.orange : Colors.red);
+
+                // 🔹 Ubah label dinamis
+                final label = connected
+                    ? 'terhubung'
+                    : (busy ? 'menghubungkan...' : 'hubungkan perangkat');
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(16),
                   onTap: () async {
                     if (busy) return;
+
+                    // putuskan jika sudah terhubung
                     if (connected) {
-                      await widget.bt.disconnect();
-                    } else {
-                      await widget.bt.openSystemBluetoothSettings();
+                      setState(() => _connecting = true);
+                      try {
+                        await widget.bt.disconnect();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Terputus dari perangkat'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Gagal memutus: $e')),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _connecting = false);
+                      }
+                      return;
+                    }
+
+                    // 🔹 langsung pairing+connect via MAC (tanpa buka Settings)
+                    setState(() => _connecting = true);
+                    try {
+                      await widget.bt.scanAndConnect();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Terhubung ke NEUROKIT'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gagal menghubungkan: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _connecting = false);
                     }
                   },
                   child: Container(
@@ -251,12 +393,11 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         busy
-                            ? SizedBox(
+                            ? const SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: textColor,
                                 ),
                               )
                             : Container(
