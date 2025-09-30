@@ -1,84 +1,83 @@
+// lib/controllers/session_controller.dart (inti saja)
 import 'dart:async';
 import 'package:get/get.dart';
+import '../utils/constants.dart';
 import '../models/mode.dart';
 import '../models/session_state.dart';
+import '../services/bt_classic_service.dart';
 import 'bluetooth_controller.dart';
-import 'music_controller.dart';
 
 class SessionController extends GetxController {
   final BluetoothController bt;
-  final MusicController music;
+  SessionController({required this.bt});
 
-  SessionController({required this.bt, required this.music});
-
-  // state session
   final phase = SessionPhase.idle.obs;
-  SessionInfo? info;
+  final remainingText = '20:00'.obs;
+  StreamSubscription<String>? _sub;
 
-  /// dipanggil saat user memilih mode di popup
-  Future<void> selectMode(SessionMode mode) async {
-    // siapkan track di audio (tanpa play)
-    await music.prepare(mode);
-    info = SessionInfo(mode: mode, trackId: music.currentTrackId ?? '');
+  @override
+  void onInit() {
+    super.onInit();
+    _sub = Get.find<BtClassicService>().lines$.listen(_onLine);
+  }
+
+  void _onLine(String line) {
+    if (line.startsWith('EVT STATUS')) {
+      final m = _kv(line.substring(11).trim());
+      final rem = int.tryParse(m['remainingMs'] ?? '0') ?? 0;
+      remainingText.value =
+          '${(rem ~/ 60000).toString().padLeft(2, '0')}:${((rem % 60000) ~/ 1000).toString().padLeft(2, '0')}';
+      final run = m['running'] == '1', pause = m['paused'] == '1';
+      if (run && !pause) phase.value = SessionPhase.running;
+      if (run && pause) phase.value = SessionPhase.paused;
+    } else if (line.startsWith('EVT COMPLETED')) {
+      phase.value = SessionPhase.completed;
+    }
+  }
+
+  Map<String, String> _kv(String s) {
+    final out = <String, String>{};
+    for (final tok in s.split(' ')) {
+      final i = tok.indexOf('=');
+      if (i > 0) out[tok.substring(0, i)] = tok.substring(i + 1);
+    }
+    return out;
+  }
+
+  Future<void> prepare(SessionMode mode) async {
+    final m = mode == SessionMode.learn ? 'LEARN' : 'CHILL';
+    final d = SessionDefaults.durationSec;
+    final v = SessionDefaults.volumePct;
+    final tc = SessionDefaults.trackChill;
+    final tl = SessionDefaults.trackLearn;
+    final tm = SessionDefaults.motivationTrack;
+    await bt.sendLine('PREPARE $m $d $v $tc $tl $tm');
     phase.value = SessionPhase.prepared;
   }
 
-  /// dipanggil saat tombol "Mulai Sesi" di StudySessionPage ditekan
-  Future<void> startSession() async {
-    if (phase.value != SessionPhase.prepared || info == null) return;
-
-    // 1) pastikan tersambung BLE dulu
-    if (!bt.isConnected.value) {
-      // optional: auto connect
-      await bt.scanAndConnect();
-      if (!bt.isConnected.value) {
-        phase.value = SessionPhase.error;
-        return;
-      }
-    }
-
-    // 2) kirim komando 'prepare' dulu ke ESP32 (agar lampu siap/mode set)
-    // await bt.sendCommand({
-    //   'cmd': 'prepare',
-    //   ...info!.toJson(),
-    // });
-    // TODO: kalau perlu tunggu ACK dari notifications
-
-    // 3) play audio (OS akan route audio ke NeuroKit jika A2DP tersambung)
-    await music.play();
+  Future<void> start() async {
+    await bt.sendLine('START');
     phase.value = SessionPhase.running;
-
-    // 4) opsional: kirim 'start' setelah musik benar-benar jalan
-    //await bt.sendCommand({'cmd': 'start'});
   }
 
-  Future<void> stopSession({bool completed = false}) async {
-    // kirim komando stop dan matikan audio
-    //await bt.sendCommand({'cmd': 'stop'});
-    await music.stop();
-    phase.value = completed ? SessionPhase.completed : SessionPhase.idle;
-    info = null;
+  Future<void> pause() async {
+    await bt.sendLine('PAUSE');
+    phase.value = SessionPhase.paused;
+  }
+
+  Future<void> resume() async {
+    await bt.sendLine('RESUME');
+    phase.value = SessionPhase.running;
+  }
+
+  Future<void> stop() async {
+    await bt.sendLine('STOP');
+    phase.value = SessionPhase.completed;
+  }
+
+  @override
+  void onClose() {
+    _sub?.cancel();
+    super.onClose();
   }
 }
-
-/*
-// ====== OPTIONAL: tunggu ACK dari ESP32 sebelum play ======
-// Future<bool> _waitAck(String expect, {Duration timeout = const Duration(seconds: 3)}) async {
-//   final c = Completer<bool>();
-//   final sub = bt._ble.notifications.listen((m) {
-//     if (m['ack'] == expect) c.complete(true);
-//   });
-//   Future.delayed(timeout, () { if (!c.isCompleted) c.complete(false); });
-//   final ok = await c.future;
-//   await sub.cancel();
-//   return ok;
-// }
-//
-// di startSession():
-//   await bt.sendCommand({'cmd': 'prepare', ...info!.toJson()});
-//   final ok = await _waitAck('prepare');
-//   if (!ok) { phase.value = SessionPhase.error; return; }
-//   await music.play();
-//   await bt.sendCommand({'cmd': 'start'});
-// ============================================================
-*/
