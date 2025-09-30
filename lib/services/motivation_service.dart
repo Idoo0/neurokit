@@ -213,6 +213,38 @@ class MotivationService extends GetxController {
     return results;
   }
   
+  Future<String> getQuoteOfTheDay() async {
+    try {
+      // Validasi API keys terlebih dahulu
+      if (!_isValidApiKeys()) {
+        print("API keys tidak valid, menggunakan fallback text untuk quote");
+        final storage = Get.find<LocalStorageService>();
+        final userData = await storage.getUserData();
+        final nama = userData['name']?.isNotEmpty == true ? userData['name']! : "Juara";
+        return "Teruslah berjuang, $nama! Setiap langkah kecil hari ini adalah lompatan besar untuk masa depanmu.";
+      }
+
+      // Ambil data user dari local storage
+      final storage = Get.find<LocalStorageService>();
+      final userData = await storage.getUserData();
+      final nama = userData['name']?.isNotEmpty == true ? userData['name']! : "Pelajar";
+      final univImpian = userData['university']?.isNotEmpty == true ? userData['university']! : "Universitas Impian";
+
+      // Panggil fungsi internal yang hanya generate text.
+      // Kita bisa gunakan sesi "start" untuk mendapatkan motivasi penyemangat.
+      final quote = await _generateMotivationText(nama, univImpian, "start");
+      
+      return quote.isNotEmpty 
+          ? quote 
+          : "Mimpi tidak menjadi kenyataan melalui sihir; dibutuhkan keringat, tekad, dan kerja keras.";
+
+    } catch (e) {
+      print("Error getting quote of the day: $e");
+      // Fallback jika terjadi error
+      return "Percayalah pada prosesnya. Kamu lebih kuat dari yang kamu kira.";
+    }
+  }
+
   /// Generate text motivasi menggunakan OpenRouter
   Future<String> _generateMotivationText(String nama, String univImpian, String sesi) async {
     final waktuBelajar = _getCurrentTimeString();
