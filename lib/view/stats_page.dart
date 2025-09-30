@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:my_app/services/motivation_service.dart';
 // Make sure your utils.dart file path is correct
 import '../utils.dart';
 
@@ -24,11 +25,14 @@ class _StatsPageState extends State<StatsPage> {
   // int _pointsForNextLevel = 10000;
   // int _level = 0;
   // String _levelTitle = '';
-  String _quoteOfTheDay = 'Belajar adalah investasi terbaik untuk masa depan.';
+  String _quoteOfTheDay = 'Memuat kutipan...';
+  late final MotivationService _motivationService;
+  
 
   @override
   void initState() {
     super.initState();
+    _motivationService = Get.put(MotivationService());
     _loadStatsData();
   }
 
@@ -36,33 +40,30 @@ class _StatsPageState extends State<StatsPage> {
   // Di sinilah tempat Anda akan mengambil data dari local storage.
   // Untuk sekarang, kita isi dengan data hardcoded.
   Future<void> _loadStatsData() async {
-    // Simulasi penundaan jaringan atau database
-    // await Future.delayed(const Duration(seconds: 1));
-
-    // // Data hardcoded sebagai pengganti local storage
-    // setState(() {
-    //   _streakDays = 125;
-    //   _totalFocusedMinutes = (14 * 60) + 10; // 14h 10m
-    //   _level = 3;
-    //   _levelTitle = 'MasterrrMind';
-    //   _currentPoints = 1240;
-    //   _pointsForNextLevel = 2500;
-    //   _quoteOfTheDay = '"Rasa lelah dan bosan yang kamu lawan saat ini hanyalah sementara, namun pemahaman yang kamu raih akan menjadi fondasi permanen yang membangun kecerdasan dan masa depanmu"';
-    //   _isLoading = false; // Data selesai dimuat
-    // });
+    // Memastikan setState tidak dipanggil jika widget sudah di-dispose
+    if (!mounted) return;
 
     final storageService = Get.find<LocalStorageService>();
     
-    // Panggil metode getStats() yang sudah ada di service Anda
-    final stats = await storageService.getStats();
-    final totalPoints = await storageService.getTotalPoints();
+    // 3. PANGGIL KEDUA FUNGSI SECARA BERSAMAAN
+    // Ini lebih efisien daripada menunggu satu per satu
+    final results = await Future.wait([
+      storageService.getStats(),
+      storageService.getTotalPoints(),
+      _motivationService.getQuoteOfTheDay(), // Ambil kutipan
+    ]);
+
+    // Ambil hasil dari `Future.wait`
+    final stats = results[0] as Map<String, int>;
+    final totalPoints = results[1] as int;
+    final newQuote = results[2] as String;
 
     if (mounted) {
       setState(() {
         _streakDays = stats['streakCount'] ?? 0;
         _totalFocusedSeconds = stats['weeklyFocusSec'] ?? 0;
-
         _levelInfo = calculateLevelInfo(totalPoints);
+        _quoteOfTheDay = newQuote; // Update kutipan dari service
 
         _isLoading = false; // Data selesai dimuat
       });
