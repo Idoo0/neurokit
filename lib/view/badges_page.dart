@@ -78,7 +78,7 @@ class _BadgesPageState extends State<BadgesPage> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         // ... (UI AppBar tidak berubah)
         backgroundColor: Colors.transparent,

@@ -99,7 +99,7 @@ class _StatsPageState extends State<StatsPage> {
     const Color darkBlue = Color(0xFF001F54);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -167,9 +167,9 @@ class _StatsPageState extends State<StatsPage> {
       child: Stack(
         children: [
           Positioned(
-            right: -15,
-            bottom: -25,
-            child: Image.asset('assets/images/star.png', width: 130),
+            right: 0,
+            bottom: 0,
+            child: Image.asset('assets/images/star.png', width: 175, height: 175, fit: BoxFit.fill),
           ),
           Padding(
             padding: const EdgeInsets.all(AppConstants.defaultPadding),
