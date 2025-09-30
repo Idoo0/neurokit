@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
+import '../controllers/bluetooth_controller.dart';
+import '../controllers/session_controller.dart';
+import '../utils/constants.dart';
 import '../utils.dart';
 
 class StudySessionPage extends StatefulWidget {
@@ -23,6 +26,9 @@ class _StudySessionPageState extends State<StudySessionPage> {
 
   Timer? _ticker;
 
+  final session = Get.find<SessionController>();
+  final bt = Get.find<BluetoothController>();
+
   // ---- lifecycle ----
   @override
   void dispose() {
@@ -32,16 +38,24 @@ class _StudySessionPageState extends State<StudySessionPage> {
 
   // ---- logic ----
   void _startSession() async {
-    // ensure we have a start timestamp
+    if (!bt.isConnected.value) {
+      try {
+        await bt.scanAndConnect();
+      } catch (_) {
+        return;
+      }
+    }
+    try {
+      await session.start();
+    } catch (_) {}
+
     final store = Get.find<LocalStorageService>();
     final s = await store.getStudySummary();
-    if (s['startedAt'] == null) {
-      await store.markStudyStartedNow();
-    }
+    if (s['startedAt'] == null) await store.markStudyStartedNow();
 
     setState(() {
       step = 1;
-      _remaining = _totalDuration; // reset to full duration
+      _remaining = _totalDuration;
     });
     _startTicker();
   }
@@ -61,30 +75,33 @@ class _StudySessionPageState extends State<StudySessionPage> {
     });
   }
 
-  void _pauseSession() {
+  void _pauseSession() async {
+    try {
+      await session.pause();
+    } catch (_) {}
     _ticker?.cancel();
     setState(() => step = 2);
   }
 
-  void _resumeSession() {
+  void _resumeSession() async {
+    try {
+      await session.resume();
+    } catch (_) {}
     setState(() => step = 1);
     _startTicker();
   }
 
   void _endSession({required bool userStopped}) async {
+    try {
+      await session.stop();
+    } catch (_) {}
     _ticker?.cancel();
 
     final store = Get.find<LocalStorageService>();
     final seconds = _totalDuration.inSeconds - _remaining.inSeconds;
-
-    // persist stats
     await store.finalizeStudy(durationSeconds: seconds);
 
-    // then go to motivation (end flow)
-    Get.offNamed(
-      RoutesName.motivation,
-      arguments: {'isStarting': false},
-    );
+    Get.offNamed(RoutesName.motivation, arguments: {'isStarting': false});
   }
 
   // ---- UI ----
@@ -108,10 +125,7 @@ class _StudySessionPageState extends State<StudySessionPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: content,
-        ),
+        child: Padding(padding: const EdgeInsets.all(24.0), child: content),
       ),
     );
   }
@@ -124,17 +138,25 @@ class _StudySessionPageState extends State<StudySessionPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Hentikan Sesi?'),
-          content: const Text('Apakah kamu yakin ingin mengakhiri sesi ini lebih awal?'),
+          content: const Text(
+            'Apakah kamu yakin ingin mengakhiri sesi ini lebih awal?',
+          ),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false), // Returns false
+              onPressed: () =>
+                  Navigator.of(context).pop(false), // Returns false
               child: Text('Tidak', style: TextStyle(color: neutral700)),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true), // Returns true
-              child: Text('Ya, Hentikan', style: TextStyle(color: brand600, fontWeight: FontWeight.bold)),
+              child: Text(
+                'Ya, Hentikan',
+                style: TextStyle(color: brand600, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -142,34 +164,37 @@ class _StudySessionPageState extends State<StudySessionPage> {
     );
   }
 
-  Widget _buildButton(
-      {required String text,
-        required VoidCallback onPressed,
-        bool isPrimary = true}) {
+  Widget _buildButton({
+    required String text,
+    required VoidCallback onPressed,
+    bool isPrimary = true,
+  }) {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: isPrimary
           ? ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: brand600,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28)),
-        ),
-        child: Text(text, style: buttonText),
-      )
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: brand600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+              child: Text(text, style: buttonText),
+            )
           : OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: brand600,
-          side: const BorderSide(color: brand600, width: 1.5),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28)),
-        ),
-        child: Text(text, style: buttonText.copyWith(color: brand600)),
-      ),
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: brand600,
+                side: const BorderSide(color: brand600, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+              child: Text(text, style: buttonText.copyWith(color: brand600)),
+            ),
     );
   }
 
@@ -196,7 +221,10 @@ class _StudySessionPageState extends State<StudySessionPage> {
         _buildButton(text: "Mulai", onPressed: _startSession),
         const SizedBox(height: 12),
         _buildButton(
-            text: "Kembali", onPressed: () => Get.back(), isPrimary: false),
+          text: "Kembali",
+          onPressed: () => Get.back(),
+          isPrimary: false,
+        ),
       ],
     );
   }
@@ -211,13 +239,12 @@ class _StudySessionPageState extends State<StudySessionPage> {
               Text(
                 AppFormatters.formatDuration(_remaining),
                 style: desktopH1.copyWith(
-                    fontWeight: FontWeight.bold, fontSize: 48),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 48,
+                ),
               ),
               const SizedBox(height: 30),
-              Image.asset(
-                'assets/images/star-wink.png',
-                height: 400,
-              ),
+              Image.asset('assets/images/star-wink.png', height: 400),
             ],
           ),
         ),

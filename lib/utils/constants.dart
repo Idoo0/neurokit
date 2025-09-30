@@ -39,6 +39,8 @@ class BtConstants {
 
   /// UUID SPP standar untuk RFCOMM (dipakai di sisi Android).
   static const sppUuid = '00001101-0000-1000-8000-00805F9B34FB';
+
+  static const MAC_ADDRESS = '24:6F:28:AD:9D:56';
 }
 
 class SessionDefaults {

@@ -11,6 +11,7 @@ import '../controllers/session_controller.dart';
 import '../routes/routes_name.dart';
 import '../services/local_storage_service.dart';
 import '../utils.dart';
+import '../utils/constants.dart' show SessionDefaults;
 
 // Ganti import ini dengan file real kamu
 import 'badges_page.dart';
@@ -102,6 +103,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   // Key yang unik untuk memaksa rebuild FutureBuilder
   Key _nameWidgetKey = UniqueKey();
+  bool _connecting = false;
 
   @override
   void initState() {
@@ -135,33 +137,52 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
   }
 
   Future<void> _openModePicker() async {
-    final mode = await showModePicker(context);
-    if (mode == null) return;
+    final picked = await showModePicker(context);
+    if (picked == null) return;
 
-    // keep your existing controller logic
-    // Panggil selectMode jika tersedia (hindari crash bila belum diimplementasi)
-    final sess = widget.session;
-    try {
-      // dynamic call fallback
-      // ignore: avoid_dynamic_calls
-      // gunakan mirrors manual: kita asumsikan method mungkin ada
-      // Jika tidak ada, tangkap exception.
-      // @ts-ignore style comment not needed in Dart.
-      // We rely on dynamic since SessionController tidak terlihat di sini.
-      // ignore: unused_catch_clause
-      // ignore: unnecessary_cast
-      (sess as dynamic).selectMode(mode);
-    } catch (_) {
-      // no-op
+    // Persist pilihan user (punyamu sudah benar)
+    final store = Get.find<LocalStorageService>();
+    await store.setSelectedModeString(picked.name);
+
+    // Pastikan sudah terhubung ke ESP32
+    if (!widget.bt.isConnected.value) {
+      try {
+        await widget.bt.scanAndConnect();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghubungkan device: $e')),
+        );
+        return;
+      }
     }
 
-    // persist to local storage for restore
-    final store = Get.find<LocalStorageService>();
-    await store.setSelectedModeString(mode.name);
+    // Map mode UI -> string command
+    final modeStr = picked.name.toUpperCase().contains('LEARN')
+        ? 'LEARN'
+        : 'CHILL';
+
+    // Compose command PREPARE <MODE> <dur> <vol> <tChill> <tLearn> <tMotiv>
+    final dur = SessionDefaults.durationSec;
+    final vol = SessionDefaults.volumePct;
+    final tChill = SessionDefaults.trackChill;
+    final tLearn = SessionDefaults.trackLearn;
+    final tMotiv = SessionDefaults.motivationTrack;
+
+    // Kirim ke ESP32 (baris diakhiri \n oleh service)
+    await widget.bt.sendLine('$modeStr');
+
+    // (opsional) minta status sekali untuk memastikan sisi ESP32 siap
+    await widget.bt.sendLine('STATUS?');
 
     if (!mounted) return;
 
-    // navigate to Motivation
+    // (opsional) tetap panggil selectMode milik controller-mu, kalau ada
+    try {
+      (widget.session as dynamic).selectMode(picked);
+    } catch (_) {}
+
+    // Lanjut ke Motivation
     Get.toNamed(RoutesName.motivation, arguments: {'isStarting': true});
   }
 
@@ -226,22 +247,71 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
               // ---------- Connect pill (reactive) ----------
               Obx(() {
                 final connected = widget.bt.isConnected.value;
-                // Support either isScanning (alias) or isDiscovering
-                final busy = (widget.bt.isDiscovering).value;
+
+                // 🔹 “busy” = discover + connecting lokal
+                final busy = widget.bt.isDiscovering.value || _connecting;
 
                 final bg = connected ? green50 : Colors.white;
-                final border = connected ? green400 : Colors.red;
-                final textColor = connected ? green600 : Colors.red;
-                final label = connected ? 'terhubung' : 'hubungkan perangkat';
+                final border = connected
+                    ? green400
+                    : (busy ? Colors.orange : Colors.red);
+                final textColor = connected
+                    ? green600
+                    : (busy ? Colors.orange : Colors.red);
+
+                // 🔹 Ubah label dinamis
+                final label = connected
+                    ? 'terhubung'
+                    : (busy ? 'menghubungkan...' : 'hubungkan perangkat');
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(16),
                   onTap: () async {
                     if (busy) return;
+
+                    // putuskan jika sudah terhubung
                     if (connected) {
-                      await widget.bt.disconnect();
-                    } else {
-                      await widget.bt.openSettings();
+                      setState(() => _connecting = true);
+                      try {
+                        await widget.bt.disconnect();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Terputus dari perangkat'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Gagal memutus: $e')),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _connecting = false);
+                      }
+                      return;
+                    }
+
+                    // 🔹 langsung pairing+connect via MAC (tanpa buka Settings)
+                    setState(() => _connecting = true);
+                    try {
+                      await widget.bt.scanAndConnect();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Terhubung ke NEUROKIT'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gagal menghubungkan: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _connecting = false);
                     }
                   },
                   child: Container(
@@ -265,12 +335,11 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         busy
-                            ? SizedBox(
+                            ? const SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: textColor,
                                 ),
                               )
                             : Container(
