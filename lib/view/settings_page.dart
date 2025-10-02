@@ -19,7 +19,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _majorController = TextEditingController();
   
   // State variables
-  String _selectedClass = '7';
+  String _selectedClass = '10';
   bool _isLoading = true;
   
   @override
@@ -41,7 +41,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final userData = await _storage.getUserData();
       setState(() {
         _nameController.text = userData['name'] ?? '';
-        _selectedClass = userData['class'] ?? '7';
+        _selectedClass = userData['class'] ?? '10';
         _universityController.text = userData['university'] ?? '';
         _majorController.text = userData['major'] ?? '';
         _isLoading = false;
@@ -100,7 +100,7 @@ class _SettingsPageState extends State<SettingsPage> {
       // Reset form
       setState(() {
         _nameController.clear();
-        _selectedClass = '7';
+        _selectedClass = '10';
         _universityController.clear();
         _majorController.clear();
       });
@@ -248,12 +248,12 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 12),
             Row(
-              children: ['7', '8', '9'].map((kelas) {
+              children: ['10', '11', '12'].map((kelas) {
                 final isSelected = _selectedClass == kelas;
                 return Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(
-                      right: kelas != '9' ? 8 : 0,
+                      right: kelas != '12' ? 8 : 0,
                     ),
                     child: InkWell(
                       onTap: () => setState(() => _selectedClass = kelas),

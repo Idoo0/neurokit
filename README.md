@@ -20,7 +20,7 @@
 
 ## 🌟 **What is NeuroKit?**
 
-NeuroKit is an innovative Flutter application designed specifically for Indonesian students (Kelas 7-9) who want to maximize their learning potential. By combining **AI-powered motivation**, **Bluetooth LE integration**, and **comprehensive progress tracking**, NeuroKit transforms the traditional study experience into an engaging, data-driven journey toward academic success.
+NeuroKit is an innovative Flutter application designed specifically for Indonesian students (Kelas 10-12) who want to maximize their learning potential. By combining **AI-powered motivation**, **Bluetooth LE integration**, and **comprehensive progress tracking**, NeuroKit transforms the traditional study experience into an engaging, data-driven journey toward academic success.
 
 > 🎯 **Mission**: To help Indonesian students achieve their dream university admission through smart, focused study sessions powered by artificial intelligence.
 
@@ -52,7 +52,7 @@ NeuroKit is an innovative Flutter application designed specifically for Indonesi
 - **Smooth Animations**: Engaging transitions and micro-interactions
 
 ### ⚙️ **Advanced Settings & Management**
-- **Profile Customization**: Name, class (7-9), dream university, and major
+- **Profile Customization**: Name, class (10-12), dream university, and major
 - **Data Export**: Export your study statistics in JSON format
 - **Privacy Controls**: Complete data management and reset options
 - **Offline Capability**: Core features work without internet connection
