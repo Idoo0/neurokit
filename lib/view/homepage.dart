@@ -69,14 +69,6 @@ class _HomepagePageState extends State<HomepagePage> {
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
       ),
-      // Debug API button - only show in debug mode
-      floatingActionButton: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : FloatingActionButton.small(
-              onPressed: () => showApiDebugDialog(context),
-              backgroundColor: Colors.orange,
-              child: const Icon(Icons.bug_report, size: 20),
-            ),
     );
   }
 }
